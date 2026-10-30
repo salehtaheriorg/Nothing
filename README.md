@@ -1,4 +1,4 @@
-[[[[]]]]# Bug Bounty Multi-Agent System (Overseer/Hunter)
+# Bug Bounty Multi-Agent System (Overseer/Hunter)
 
 <p align="center">
   <b>🌐 Language / زبان</b><br>
