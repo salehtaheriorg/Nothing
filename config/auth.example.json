@@ -1,0 +1,16 @@
+{
+  "_readme": "این فایل session کوکی/توکن اکانت‌های تست خودتـه، نه اکانت شخص دیگه. IDORHunter از اینا استفاده می‌کنه تا چک کنه آیا یه اکانت می‌تونه به منابع اکانت دیگه دسترسی پیدا کنه یا نه. session_b اختیاریه - اگه فقط یه اکانت تست داری، خالی بذارش و فقط تست authenticated-vs-unauthenticated انجام می‌شه.",
+
+  "session_a": {
+    "cookie": "PHPSESSID=xxxxxxxx; other_cookie=yyyy",
+    "headers": {
+      "Authorization": ""
+    }
+  },
+  "session_b": {
+    "cookie": "",
+    "headers": {
+      "Authorization": ""
+    }
+  }
+}

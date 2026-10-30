@@ -1,0 +1,13 @@
+{
+  "recon": true,
+  "idor": true,
+  "xss": true,
+  "cors_redirect": true,
+  "ssrf": true,
+  "nuclei": true,
+  "template_forge": true,
+  "param_miner": true,
+  "takeover": true,
+  "secrets": true,
+  "diffscan": true
+}

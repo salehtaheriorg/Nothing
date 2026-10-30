@@ -1,0 +1,92 @@
+[
+  {
+    "service": "GitHub Pages",
+    "cname_indicators": ["github.io", "github.map.fastly.net"],
+    "response_signature": "There isn't a GitHub Pages site here",
+    "docs_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "service": "Heroku",
+    "cname_indicators": ["herokuapp.com", "herokudns.com", "herokussl.com"],
+    "response_signature": "No such app",
+    "docs_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "service": "AWS S3",
+    "cname_indicators": ["s3.amazonaws.com", "s3-website"],
+    "response_signature": "NoSuchBucket",
+    "docs_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "service": "Shopify",
+    "cname_indicators": ["myshopify.com"],
+    "response_signature": "Sorry, this shop is currently unavailable",
+    "docs_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "service": "Fastly",
+    "cname_indicators": ["fastly.net"],
+    "response_signature": "Fastly error: unknown domain",
+    "docs_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "service": "Netlify",
+    "cname_indicators": ["netlify.app", "netlify.com"],
+    "response_signature": "Not Found - Request ID",
+    "docs_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "service": "Surge.sh",
+    "cname_indicators": ["surge.sh"],
+    "response_signature": "project not found",
+    "docs_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "service": "Tumblr",
+    "cname_indicators": ["domains.tumblr.com"],
+    "response_signature": "Whatever you were looking for doesn't currently exist",
+    "docs_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "service": "WordPress.com",
+    "cname_indicators": ["wordpress.com"],
+    "response_signature": "Do you want to register",
+    "docs_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "service": "Zendesk",
+    "cname_indicators": ["zendesk.com"],
+    "response_signature": "Help Center Closed",
+    "docs_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "service": "Unbounce",
+    "cname_indicators": ["unbounce.com"],
+    "response_signature": "The requested URL was not found on this server",
+    "docs_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "service": "Cargo Collective",
+    "cname_indicators": ["cargocollective.com"],
+    "response_signature": "404 Not Found",
+    "docs_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "service": "Bitbucket",
+    "cname_indicators": ["bitbucket.io"],
+    "response_signature": "Repository not found",
+    "docs_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "service": "Ghost",
+    "cname_indicators": ["ghost.io"],
+    "response_signature": "The thing you were looking for is no longer here",
+    "docs_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "service": "UserVoice",
+    "cname_indicators": ["uservoice.com"],
+    "response_signature": "This UserVoice subdomain is currently available",
+    "docs_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  }
+]

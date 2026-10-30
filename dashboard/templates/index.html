@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="csrf-token" content="{{ csrf_token }}">
+<title>Bug Bounty Command Center</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --border: #30363d; --text: #c9d1d9; --muted: #8b949e;
+    --accent: #58a6ff; --green: #3fb950; --critical: #f85149; --high: #ff8a3d;
+    --medium: #e3b341; --low: #58a6ff; --info: #8b949e;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; display: flex; min-height: 100vh; }
+
+  nav#sidebar {
+    width: 220px; background: var(--panel); border-left: 1px solid var(--border);
+    padding: 16px 0; flex-shrink: 0; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  }
+  nav#sidebar h1 { font-size: 15px; padding: 0 16px; margin-bottom: 20px; }
+  nav#sidebar .nav-item {
+    padding: 10px 16px; cursor: pointer; font-size: 13px; color: var(--muted);
+    border-right: 3px solid transparent; display: flex; align-items: center; gap: 8px;
+  }
+  nav#sidebar .nav-item:hover { background: #1c2129; color: var(--text); }
+  nav#sidebar .nav-item.active { color: var(--accent); border-right-color: var(--accent); background: #1c2129; }
+
+  main { flex: 1; padding: 24px; max-width: 1100px; }
+  .section { display: none; }
+  .section.active { display: block; }
+  h2 { font-size: 18px; margin: 0 0 16px 0; }
+  h3 { font-size: 14px; color: var(--muted); margin: 20px 0 10px 0; }
+
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+
+  input[type=text], input[type=number], input[type=password], select, textarea {
+    background: #0d1117; border: 1px solid var(--border); color: var(--text);
+    padding: 8px 10px; border-radius: 6px; font-size: 13px; font-family: inherit;
+  }
+  textarea { width: 100%; min-height: 60px; resize: vertical; }
+  button {
+    background: var(--accent); color: #0d1117; border: none; padding: 8px 16px;
+    border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  button.danger { background: var(--critical); color: white; }
+  button.success { background: var(--green); color: #0d1117; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-size: 11px; text-transform: uppercase; }
+  td.mono { font-family: monospace; font-size: 12px; color: var(--muted); word-break: break-all; }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; color: #0d1117; }
+  .badge.critical { background: var(--critical); } .badge.high { background: var(--high); }
+  .badge.medium { background: var(--medium); } .badge.low { background: var(--low); color: white; }
+  .badge.info { background: var(--info); }
+  .badge.running { background: var(--green); } .badge.idle { background: var(--muted); }
+  .badge.error { background: var(--critical); } .badge.completed { background: var(--accent); }
+  .badge.stopped { background: var(--medium); }
+
+  .tag { display: inline-block; background: #0d1117; border: 1px solid var(--border); padding: 4px 10px; border-radius: 14px; font-size: 12px; margin: 3px; }
+  .tag button { background: none; border: none; color: var(--critical); padding: 0 0 0 6px; font-size: 13px; cursor: pointer; }
+
+  .switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; cursor: pointer; inset: 0; background: var(--border); border-radius: 22px; transition: .2s; }
+  .slider:before { position: absolute; content: ""; height: 16px; width: 16px; right: 3px; bottom: 3px; background: white; border-radius: 50%; transition: .2s; }
+  input:checked + .slider { background: var(--green); }
+  input:checked + .slider:before { transform: translateX(-18px); }
+
+  #logbox { background: #010409; border: 1px solid var(--border); border-radius: 6px; padding: 10px; height: 260px; overflow-y: auto; font-family: monospace; font-size: 12px; white-space: pre-wrap; }
+  .empty { color: var(--muted); text-align: center; padding: 20px; font-size: 13px; }
+  .muted { color: var(--muted); font-size: 12px; }
+  .warn-box { background: #2d1a0e; border: 1px solid var(--high); border-radius: 6px; padding: 10px 14px; font-size: 12px; margin-bottom: 16px; }
+
+  #report-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
+  #report-modal .modal-content { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; width: 90%; max-width: 700px; max-height: 80vh; overflow-y: auto; padding: 20px; }
+  #report-modal pre { white-space: pre-wrap; font-size: 12px; font-family: monospace; background: #0d1117; padding: 12px; border-radius: 6px; }
+</style>
+</head>
+<body>
+
+<nav id="sidebar">
+  <h1>🎯 Bug Bounty</h1>
+  <div class="nav-item active" data-section="scan">▶️ شروع اسکن</div>
+  <div class="nav-item" data-section="domains">🧭 دامنه‌های مجاز</div>
+  <div class="nav-item" data-section="hunters">🤖 هانترها</div>
+  <div class="nav-item" data-section="findings">🐞 یافته‌ها و گزارش‌ها</div>
+  <div class="nav-item" data-section="keys">🔑 API Keys</div>
+  <div class="nav-item" data-section="knowledge">📚 آموزش هانترها</div>
+  <div class="nav-item" data-section="history">📜 تاریخچه</div>
+  <div class="nav-item" data-section="settings">⚙️ تنظیمات</div>
+</nav>
+
+<main>
+
+<!-- ================= شروع اسکن ================= -->
+<div class="section active" id="section-scan">
+  <h2>▶️ شروع اسکن</h2>
+  <div class="card">
+    <div class="row" style="justify-content: space-between;">
+      <div>
+        <span id="scan-status-badge" class="badge idle">idle</span>
+        <span id="scan-status-msg" class="muted"></span>
+      </div>
+      <div class="row">
+        <button id="btn-start" onclick="startScan()">شروع اسکن</button>
+        <button id="btn-stop" class="danger" onclick="stopScan()">توقف</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-4" id="summary-cards"></div>
+
+  <h3>لاگ زنده</h3>
+  <div id="logbox">در انتظار شروع اسکن...</div>
+
+  <h3>وضعیت Kanban</h3>
+  <div class="grid-4" id="kanban-cards"></div>
+</div>
+
+<!-- ================= دامنه‌ها ================= -->
+<div class="section" id="section-domains">
+  <h2>🧭 دامنه‌های مجاز (Scope)</h2>
+  <div class="card">
+    <div class="row">
+      <label>اسم برنامه:</label>
+      <input type="text" id="program-name-input" placeholder="مثلاً example-program">
+      <button onclick="saveProgramName()">ذخیره</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">✅ دامنه‌های مجاز (in_scope)</h3>
+    <div id="in-scope-list"></div>
+    <div class="row" style="margin-top:10px">
+      <input type="text" id="in-scope-input" placeholder="مثلاً *.example.com">
+      <button onclick="addDomain('in_scope')">افزودن</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">⛔ دامنه‌های ممنوع (out_of_scope)</h3>
+    <div id="out-scope-list"></div>
+    <div class="row" style="margin-top:10px">
+      <input type="text" id="out-scope-input" placeholder="مثلاً blog.example.com">
+      <button onclick="addDomain('out_of_scope')">افزودن</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">🗂️ چند-برنامه‌ای (Programs)</h3>
+    <p class="muted">می‌تونی چند تا scope مختلف (برای چند برنامه‌ی bug bounty) رو ذخیره و بین‌شون جابه‌جا بشی — حجم فرصت‌های bug bounty‌ت رو بالا می‌بره.</p>
+    <div class="row">
+      <input type="text" id="program-save-input" placeholder="اسم برای ذخیره‌ی scope فعلی">
+      <button onclick="saveProgram()">ذخیره‌ی برنامه‌ی فعلی</button>
+    </div>
+    <div id="programs-list" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<!-- ================= هانترها ================= -->
+<div class="section" id="section-hunters">
+  <h2>🤖 مدیریت هانترها</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th>فعال</th><th>هانتر</th><th>توضیح</th><th>آمار</th><th></th></tr></thead>
+      <tbody id="hunters-table"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ================= یافته‌ها ================= -->
+<div class="section" id="section-findings">
+  <h2>🐞 یافته‌ها و گزارش‌ها</h2>
+
+  <div class="grid-4" id="earnings-cards"></div>
+
+  <div class="card" style="overflow-x:auto">
+    <table>
+      <thead>
+        <tr><th>شدت</th><th>نوع</th><th>هدف</th><th>اطمینان</th><th>وضعیت ارسال</th><th>پاداش</th><th>تأیید</th><th></th></tr>
+      </thead>
+      <tbody id="findings-table"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ================= API Keys ================= -->
+<div class="section" id="section-keys">
+  <h2>🔑 مدیریت API Keys</h2>
+  <div class="warn-box">⚠️ این مقادیر روی دیسک خودت (لوکال) ذخیره می‌شن، به‌صورت plaintext در فایل‌های config. این داشبورد فقط روی 127.0.0.1 قابل‌دسترسیه — هیچ‌وقت expose‌ش نکن.</div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Gemini API Key</h3>
+    <p class="muted">برای بخش planning در Overseer استفاده می‌شه. وضعیت فعلی: <span id="gemini-key-status">—</span></p>
+    <div class="row">
+      <input type="password" id="gemini-key-input" placeholder="AIza...">
+      <button onclick="saveGeminiKey()">ذخیره</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Session A (اکانت تست اصلی، برای IDORHunter)</h3>
+    <p class="muted">وضعیت: <span id="session-a-status">—</span></p>
+    <textarea id="session-a-cookie" placeholder="کوکی: name1=value1; name2=value2"></textarea>
+    <div class="row" style="margin-top:8px">
+      <input type="text" id="session-a-auth" placeholder="Authorization header (اختیاری)">
+      <button onclick="saveSession('session_a')">ذخیره Session A</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Session B (اکانت تست دوم، اختیاری)</h3>
+    <p class="muted">وضعیت: <span id="session-b-status">—</span></p>
+    <textarea id="session-b-cookie" placeholder="کوکی: name1=value1; name2=value2"></textarea>
+    <div class="row" style="margin-top:8px">
+      <input type="text" id="session-b-auth" placeholder="Authorization header (اختیاری)">
+      <button onclick="saveSession('session_b')">ذخیره Session B</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= آموزش هانترها ================= -->
+<div class="section" id="section-knowledge">
+  <h2>📚 آموزش هانترها</h2>
+  <div class="warn-box">
+    ℹ️ این پایگاه‌دانش منطق قطعی هانترهای regex-based (IDOR/XSS/Secrets/Takeover/CORS/SSRF) رو
+    خودکار تغییر نمی‌ده — همیشه همون قوانین سخت‌کدشده اجرا می‌شن. یادداشت‌هایی که اینجا اضافه می‌کنی
+    فقط به بخش <b>planning</b> (تصمیم‌گیری هوشمند Overseer با Gemini) کمک می‌کنن. برای تبدیل یه
+    تکنیک به یه الگوی واقعی، از دکمه‌ی «🔍 پیشنهاد الگو» زیر هر یادداشت استفاده کن — نتیجه فقط
+    یه پیشنهاده که باید دستی بررسی و اضافه‌ش کنی.
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">افزودن یادداشت جدید</h3>
+    <div class="row">
+      <select id="knowledge-hunter-select">
+        <option value="general">عمومی (همه‌ی هانترها)</option>
+        <option value="recon">Recon</option>
+        <option value="idor">IDOR</option>
+        <option value="xss">XSS</option>
+        <option value="cors_redirect">CORS + Open Redirect</option>
+        <option value="ssrf">SSRF</option>
+        <option value="nuclei">Nuclei</option>
+        <option value="template_forge">Template Forge</option>
+        <option value="param_miner">Param Miner</option>
+        <option value="takeover">Subdomain Takeover</option>
+        <option value="secrets">Secrets</option>
+      </select>
+      <input type="text" id="knowledge-title-input" placeholder="عنوان (مثلاً: تکنیک XSS با SVG onload)" style="min-width:260px">
+    </div>
+    <textarea id="knowledge-content-input" placeholder="متن رایتاپ یا یادداشت آموزشی رو اینجا Paste کن..." style="margin-top:8px; min-height:120px"></textarea>
+    <div class="row" style="margin-top:8px">
+      <input type="text" id="knowledge-source-input" placeholder="لینک منبع (اختیاری)" style="min-width:260px">
+      <button onclick="addKnowledge()">افزودن یادداشت</button>
+    </div>
+  </div>
+
+  <div id="knowledge-list"></div>
+</div>
+
+<!-- ================= تاریخچه ================= -->
+<div class="section" id="section-history">
+  <h2>📜 تاریخچه‌ی اجراها</h2>
+  <div class="card" style="overflow-x:auto">
+    <table>
+      <thead><tr><th>برنامه</th><th>وضعیت</th><th>تعداد یافته</th><th>شروع</th><th>پایان</th></tr></thead>
+      <tbody id="runs-table"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ================= تنظیمات ================= -->
+<div class="section" id="section-settings">
+  <h2>⚙️ تنظیمات</h2>
+  <div class="card">
+    <h3 style="margin-top:0">نرخ درخواست (Rate Limiting)</h3>
+    <p class="muted">مطابق policy برنامه‌ی bug bounty‌ت تنظیم کن. رد کردن سقف مجاز می‌تونه باعث بن‌شدن اکانتت بشه.</p>
+    <div class="row">
+      <label>درخواست بر ثانیه:</label>
+      <input type="number" id="rps-input" min="0.5" max="50" step="0.5">
+      <label>Timeout (ثانیه):</label>
+      <input type="number" id="http-timeout-input" min="1" max="120" step="1">
+      <button onclick="saveSettings()">ذخیره</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">SSRF — دامنه‌ی Out-of-Band (اختیاری)</h3>
+    <p class="muted">برای تشخیص SSRF کور (بدون این فقط SSRF غیر-blind که محتوا reflect می‌شه قابل کشفه). یه دامنه از سرویسی مثل
+      <a href="https://github.com/projectdiscovery/interactsh" target="_blank" style="color:var(--accent)">interactsh</a>
+      یا هر Collaborator دیگه که خودت کنترلش می‌کنی بذار. بعد از اسکن، باید دستی داشبورد اون سرویس رو چک کنی — این ابزار
+      خودش callback رو confirm نمی‌کنه.</p>
+    <div class="row">
+      <input type="text" id="ssrf-oob-input" placeholder="مثلاً abc123.oast.fun" style="min-width:220px">
+      <button onclick="saveSettings()">ذخیره</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Template Forge — اجرای خودکار</h3>
+    <p class="muted">پیش‌فرض <b>خاموش</b> (توصیه‌شده): تمپلیت‌های Nuclei که AI تولید می‌کنه فقط ذخیره می‌شن، اجرا نمی‌شن —
+      خودت با <code>nuclei -t generated_templates/x.yaml -u target</code> دستی اجراشون می‌کنی. اگه روشنش کنی، تمپلیت‌های
+      validate-شده به‌صورت خودکار روی هدف اجرا می‌شن و در صورت match، finding مستقیم confirmed می‌شه.</p>
+    <div class="row">
+      <label class="switch"><input type="checkbox" id="template-forge-auto-input"><span class="slider"></span></label>
+      <span>اجرای خودکار تمپلیت‌های تولیدشده</span>
+      <button onclick="saveSettings()">ذخیره</button>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<div id="report-modal">
+  <div class="modal-content">
+    <div class="row" style="justify-content: space-between; margin-bottom:10px">
+      <strong>گزارش draft</strong>
+      <button class="secondary" onclick="closeReportModal()">بستن ✕</button>
+    </div>
+    <pre id="report-content">در حال بارگذاری...</pre>
+  </div>
+</div>
+
+<script>
+const SEVERITY_LABEL = { critical: "بحرانی", high: "بالا", medium: "متوسط", low: "پایین", info: "اطلاعاتی" };
+const STATUS_LABEL = { idle: "بیکار", running: "در حال اجرا", completed: "تمام‌شده", stopped: "متوقف‌شده", error: "خطا" };
+const SUBMISSION_OPTIONS = ["not_submitted", "submitted", "triaged", "accepted", "duplicate", "rejected", "paid"];
+const SUBMISSION_LABEL = { not_submitted: "ارسال‌نشده", submitted: "ارسال‌شده", triaged: "در حال بررسی", accepted: "پذیرفته‌شده", duplicate: "تکراری", rejected: "رد‌شده", paid: "پرداخت‌شده" };
+
+// ---------- ناوبری ----------
+document.querySelectorAll(".nav-item").forEach(item => {
+  item.addEventListener("click", () => {
+    document.querySelectorAll(".nav-item").forEach(i => i.classList.remove("active"));
+    document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+    item.classList.add("active");
+    document.getElementById("section-" + item.dataset.section).classList.add("active");
+  });
+});
+
+const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').content;
+
+async function api(path, options = {}) {
+  const res = await fetch(path, {
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": CSRF_TOKEN },
+    ...options,
+  });
+  return res.json();
+}
+
+// همه‌ی دیتای اومده از سرور (finding ها، دامنه‌ها، یادداشت‌های Knowledge Base و ...)
+// قبل از innerHTML باید از اینجا رد بشه -- این دیتا می‌تونه نهایتاً از
+// هدر/بدنه‌ی یه هدف اسکن‌شده (که خودش می‌تونه خصمانه باشه) یا از
+// خروجی AI (که از همون سیگنال‌ها تأثیر می‌گیره) اومده باشه.
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
+
+// فقط لینک‌های http/https رو واقعاً قابل‌کلیک می‌کنیم؛ چیزی مثل
+// javascript:... حتی بعد از escape هم توی href خطرناکه.
+function safeHref(url) {
+  const u = String(url ?? "");
+  return /^https?:\/\//i.test(u) ? u : "#";
+}
+
+// ---------- شروع اسکن ----------
+async function startScan() {
+  const res = await api("/api/scan/start", { method: "POST" });
+  if (res.error) alert(res.error);
+}
+async function stopScan() {
+  await api("/api/scan/stop", { method: "POST" });
+}
+
+async function refreshScanSection() {
+  const summary = await api("/api/summary");
+  const status = summary.scan_status;
+
+  const badge = document.getElementById("scan-status-badge");
+  badge.textContent = STATUS_LABEL[status.state] || status.state;
+  badge.className = "badge " + status.state;
+  document.getElementById("scan-status-msg").textContent = status.message || "";
+  document.getElementById("btn-start").disabled = status.state === "running";
+  document.getElementById("btn-stop").disabled = status.state !== "running";
+
+  document.getElementById("summary-cards").innerHTML = [
+    { label: "کل یافته‌ها", num: summary.findings.total },
+    { label: "تأییدشده", num: summary.findings.verified },
+    { label: "تسک‌های انجام‌شده", num: summary.board.done || 0 },
+    { label: "در صف", num: summary.board.todo || 0 },
+  ].map(c => `<div class="card"><div style="font-size:22px;font-weight:700">${c.num}</div><div class="muted">${c.label}</div></div>`).join("");
+
+  const board = await api("/api/board");
+  const labels = { todo: "در صف", in_progress: "در حال اجرا", done: "انجام‌شده", failed: "ناموفق" };
+  document.getElementById("kanban-cards").innerHTML = Object.keys(labels).map(k => `
+    <div class="card"><div style="font-size:20px;font-weight:700">${(board[k]||[]).length}</div><div class="muted">${labels[k]}</div></div>
+  `).join("");
+
+  const logs = await api("/api/logs?n=300");
+  const logbox = document.getElementById("logbox");
+  logbox.textContent = logs.length ? logs.join("\n") : "هنوز لاگی ثبت نشده.";
+  logbox.scrollTop = logbox.scrollHeight;
+}
+
+// ---------- دامنه‌ها ----------
+async function refreshDomains() {
+  const scope = await api("/api/scope");
+  document.getElementById("program-name-input").value = scope.program_name || "";
+  document.getElementById("in-scope-list").innerHTML = renderTags(scope.in_scope || [], "in_scope");
+  document.getElementById("out-scope-list").innerHTML = renderTags(scope.out_of_scope || [], "out_of_scope");
+
+  const programs = await api("/api/programs");
+  document.getElementById("programs-list").innerHTML = programs.length
+    ? programs.map(p => `<span class="tag">${escapeHtml(p)} <button data-program="${escapeHtml(p)}" onclick="loadProgram(this.dataset.program)" style="color:var(--accent)">بارگذاری</button></span>`).join("")
+    : `<p class="muted">هنوز برنامه‌ای ذخیره نشده.</p>`;
+}
+function renderTags(list, listName) {
+  if (!list.length) return `<p class="muted">خالیه</p>`;
+  // مقدار خام d با data-domain نگه داشته می‌شه (و با escapeHtml برای خودِ
+  // attribute)، نه به‌صورت رشته‌ی JS داخل onclick -- چون یه دامنه‌ی
+  // دستکاری‌شده (مثلاً از طریق CSRF قبل از فیکس بالا) می‌تونه با کوتیشن
+  // از onclick='...' فرار کنه حتی اگه فقط HTML-escape شده باشه.
+  return list.map(d => `<span class="tag">${escapeHtml(d)}<button data-list="${escapeHtml(listName)}" data-domain="${escapeHtml(d)}" onclick="removeDomain(this.dataset.list, this.dataset.domain)">✕</button></span>`).join("");
+}
+async function addDomain(listName) {
+  const inputId = listName === "in_scope" ? "in-scope-input" : "out-scope-input";
+  const input = document.getElementById(inputId);
+  if (!input.value.trim()) return;
+  await api("/api/scope/domain/add", { method: "POST", body: JSON.stringify({ list: listName, domain: input.value.trim() }) });
+  input.value = "";
+  refreshDomains();
+}
+async function removeDomain(listName, domain) {
+  await api("/api/scope/domain/remove", { method: "POST", body: JSON.stringify({ list: listName, domain }) });
+  refreshDomains();
+}
+async function saveProgramName() {
+  const name = document.getElementById("program-name-input").value.trim();
+  await api("/api/scope/program_name", { method: "POST", body: JSON.stringify({ name }) });
+}
+async function saveProgram() {
+  const name = document.getElementById("program-save-input").value.trim();
+  if (!name) return;
+  const res = await api("/api/programs/save", { method: "POST", body: JSON.stringify({ name }) });
+  if (res.error) { alert(res.error); return; }
+  document.getElementById("program-save-input").value = "";
+  refreshDomains();
+}
+async function loadProgram(name) {
+  const res = await api("/api/programs/load", { method: "POST", body: JSON.stringify({ name }) });
+  if (res.error) { alert(res.error); return; }
+  refreshDomains();
+}
+
+// ---------- هانترها ----------
+async function refreshHunters() {
+  const hunters = await api("/api/hunters");
+  document.getElementById("hunters-table").innerHTML = hunters.map(h => `
+    <tr>
+      <td><label class="switch"><input type="checkbox" ${h.enabled ? "checked" : ""} onchange="toggleHunter('${h.name}', this.checked)"><span class="slider"></span></label></td>
+      <td><strong>${escapeHtml(h.label)}</strong></td>
+      <td class="muted">${escapeHtml(h.description)}</td>
+      <td>${h.metric_value} <span class="muted">${h.metric_label}</span></td>
+      <td>${h.name === "diffscan" ? `<button class="secondary" onclick="resetDiffScan()">بازنشانی تاریخچه</button>` : ""}</td>
+    </tr>
+  `).join("");
+}
+async function toggleHunter(name, enabled) {
+  await api("/api/hunters/toggle", { method: "POST", body: JSON.stringify({ hunter: name, enabled }) });
+}
+async function resetDiffScan() {
+  if (!confirm("تاریخچه‌ی asset های ردیابی‌شده برای برنامه‌ی فعال پاک می‌شه و دور بعدی اسکن، کامل (نه افتراقی) اجرا می‌شه. ادامه بدم؟")) return;
+  await api("/api/diffscan/reset", { method: "POST" });
+  refreshHunters();
+}
+
+// ---------- یافته‌ها ----------
+async function refreshFindings() {
+  const summary = await api("/api/summary");
+  const totals = summary.earnings.totals_by_currency || {};
+  const totalsHtml = Object.keys(totals).length
+    ? Object.entries(totals).map(([cur, amt]) => `<div class="card"><div style="font-size:20px;font-weight:700">${amt}</div><div class="muted">${cur}</div></div>`).join("")
+    : `<div class="card"><div class="muted">هنوز پاداشی ثبت نشده</div></div>`;
+  document.getElementById("earnings-cards").innerHTML = totalsHtml;
+
+  const findings = await api("/api/findings");
+  const tbody = document.getElementById("findings-table");
+  if (!findings.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">هنوز یافته‌ای ثبت نشده</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = findings.map(f => `
+    <tr>
+      <td><span class="badge ${escapeHtml(f.severity)}">${SEVERITY_LABEL[f.severity] || escapeHtml(f.severity)}</span></td>
+      <td>${escapeHtml(f.vuln_type)}</td>
+      <td class="mono" style="max-width:200px">${escapeHtml(f.target)}</td>
+      <td>${f.confidence === "confirmed" ? "✅ تأییدشده" : "🟡 نیاز به بررسی"}</td>
+      <td>
+        <button class="secondary" onclick="verifyFinding('${f.id}', true)" ${f.confidence === "confirmed" ? "disabled" : ""}>✅ تأیید</button>
+        <button class="danger" onclick="verifyFinding('${f.id}', false)" ${f.confidence !== "confirmed" ? "disabled" : ""}>↩️ لغو</button>
+      </td>
+      <td>
+        <select onchange="updateSubmission('${f.id}', 'submission_status', this.value)">
+          ${SUBMISSION_OPTIONS.map(o => `<option value="${o}" ${f.submission_status === o ? "selected" : ""}>${SUBMISSION_LABEL[o]}</option>`).join("")}
+        </select>
+      </td>
+      <td>
+        <input type="number" style="width:70px" value="${f.bounty_amount || ""}" placeholder="مبلغ"
+               onchange="updateSubmission('${f.id}', 'bounty_amount', this.value)">
+      </td>
+      <td>
+        ${f.report_path ? `<button class="secondary" onclick="viewReport('${f.id}')">رایتاپ</button>` : ""}
+      </td>
+    </tr>
+  `).join("");
+}
+async function verifyFinding(id, verified) {
+  const res = await api(`/api/findings/${id}/verify`, { method: "POST", body: JSON.stringify({ verified }) });
+  if (res.error) { alert(res.error); return; }
+  refreshFindings();
+}
+
+async function updateSubmission(id, field, value) {
+  const body = {};
+  body[field] = field === "bounty_amount" ? parseFloat(value) || null : value;
+  await api(`/api/findings/${id}/submission`, { method: "POST", body: JSON.stringify(body) });
+}
+async function viewReport(id) {
+  const res = await api(`/api/findings/${id}/report`);
+  document.getElementById("report-content").textContent = res.content || res.error || "خطا در بارگذاری";
+  document.getElementById("report-modal").style.display = "flex";
+}
+function closeReportModal() {
+  document.getElementById("report-modal").style.display = "none";
+}
+
+// ---------- API Keys ----------
+async function refreshKeys() {
+  const keys = await api("/api/keys");
+  document.getElementById("gemini-key-status").textContent = keys.gemini_api_key_set ? `تنظیم‌شده (${keys.gemini_api_key_masked})` : "تنظیم نشده";
+  document.getElementById("session-a-status").textContent = keys.session_a_set ? `تنظیم‌شده (${keys.session_a_cookie_masked})` : "تنظیم نشده";
+  document.getElementById("session-b-status").textContent = keys.session_b_set ? `تنظیم‌شده (${keys.session_b_cookie_masked})` : "تنظیم نشده";
+}
+async function saveGeminiKey() {
+  const input = document.getElementById("gemini-key-input");
+  if (!input.value.trim()) return;
+  await api("/api/keys/gemini", { method: "POST", body: JSON.stringify({ api_key: input.value.trim() }) });
+  input.value = "";
+  refreshKeys();
+}
+async function saveSession(slot) {
+  const prefix = slot === "session_a" ? "session-a" : "session-b";
+  const cookie = document.getElementById(`${prefix}-cookie`).value;
+  const authorization = document.getElementById(`${prefix}-auth`).value;
+  await api("/api/keys/session", { method: "POST", body: JSON.stringify({ slot, cookie, authorization }) });
+  document.getElementById(`${prefix}-cookie`).value = "";
+  document.getElementById(`${prefix}-auth`).value = "";
+  refreshKeys();
+}
+
+// ---------- آموزش هانترها ----------
+const HUNTER_LABELS = {
+  general: "عمومی", recon: "Recon", idor: "IDOR", xss: "XSS",
+  cors_redirect: "CORS + Redirect", ssrf: "SSRF", nuclei: "Nuclei",
+  template_forge: "Template Forge", param_miner: "Param Miner",
+  takeover: "Takeover", secrets: "Secrets",
+};
+
+async function refreshKnowledge() {
+  const notes = await api("/api/knowledge");
+  const el = document.getElementById("knowledge-list");
+  if (!notes.length) {
+    el.innerHTML = `<div class="card"><div class="empty">هنوز یادداشتی اضافه نکردی</div></div>`;
+    return;
+  }
+  el.innerHTML = notes.map(n => `
+    <div class="card" id="knowledge-card-${n.id}">
+      <div class="row" style="justify-content: space-between;">
+        <div>
+          <strong>${escapeHtml(n.title)}</strong>
+          <span class="tag" style="margin-right:8px">${escapeHtml(HUNTER_LABELS[n.hunter] || n.hunter)}</span>
+        </div>
+        <div class="row">
+          <button class="secondary" onclick="suggestPatterns('${n.id}')">🔍 پیشنهاد الگو</button>
+          <button class="danger" onclick="deleteKnowledge('${n.id}')">حذف</button>
+        </div>
+      </div>
+      <p class="muted" style="margin-bottom:4px; white-space:pre-wrap;">${escapeHtml(n.content.slice(0, 300))}${n.content.length > 300 ? "..." : ""}</p>
+      ${n.source_url ? `<a href="${escapeHtml(safeHref(n.source_url))}" target="_blank" rel="noopener noreferrer" style="color:var(--accent); font-size:12px">منبع ↗</a>` : ""}
+      <div id="knowledge-suggestions-${n.id}"></div>
+    </div>
+  `).join("");
+}
+
+async function addKnowledge() {
+  const hunter = document.getElementById("knowledge-hunter-select").value;
+  const title = document.getElementById("knowledge-title-input").value.trim();
+  const content = document.getElementById("knowledge-content-input").value.trim();
+  const source_url = document.getElementById("knowledge-source-input").value.trim();
+  if (!title || !content) { alert("عنوان و متن یادداشت رو پر کن"); return; }
+  const res = await api("/api/knowledge", { method: "POST", body: JSON.stringify({ hunter, title, content, source_url }) });
+  if (res.error) { alert(res.error); return; }
+  document.getElementById("knowledge-title-input").value = "";
+  document.getElementById("knowledge-content-input").value = "";
+  document.getElementById("knowledge-source-input").value = "";
+  refreshKnowledge();
+}
+
+async function deleteKnowledge(id) {
+  if (!confirm("این یادداشت حذف بشه؟")) return;
+  await api(`/api/knowledge/${id}/delete`, { method: "POST" });
+  refreshKnowledge();
+}
+
+async function suggestPatterns(id) {
+  const container = document.getElementById(`knowledge-suggestions-${id}`);
+  container.innerHTML = `<p class="muted">در حال گرفتن پیشنهاد از Gemini...</p>`;
+  const res = await api(`/api/knowledge/${id}/suggest`, { method: "POST" });
+  if (res.error) {
+    container.innerHTML = `<p class="muted">خطا: ${res.error}</p>`;
+    return;
+  }
+  const suggestions = res.suggestions || [];
+  if (!suggestions.length) {
+    container.innerHTML = `<p class="muted">هیچ الگوی قابل‌اتوماسیونی توی این یادداشت پیدا نشد (یا API key تنظیم نیست).</p>`;
+    return;
+  }
+  container.innerHTML = `
+    <div style="border-top:1px solid var(--border); margin-top:10px; padding-top:10px;">
+      <p class="muted" style="margin-bottom:6px">⚠️ پیشنهادی — دستی بررسی کن و در صورت تأیید خودت به فایل مربوطه اضافه کن:</p>
+      ${suggestions.map(s => `
+        <div style="background:#0d1117; border:1px solid var(--border); border-radius:6px; padding:8px 10px; margin-bottom:6px; font-size:12px;">
+          <span class="badge info">${escapeHtml(s.type)}</span>
+          <code style="display:block; margin:6px 0; word-break:break-all;">${escapeHtml(s.value)}</code>
+          <span class="muted">${escapeHtml(s.explanation || "")}</span>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+// ---------- تاریخچه ----------
+async function refreshHistory() {
+  const runs = await api("/api/runs");
+  const tbody = document.getElementById("runs-table");
+  if (!runs.length) {
+    tbody.innerHTML = `<tr><td colspan="5" class="empty">هنوز اسکنی اجرا نشده</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = runs.map(r => `
+    <tr>
+      <td>${escapeHtml(r.program_name) || "—"}</td>
+      <td><span class="badge ${r.status}">${STATUS_LABEL[r.status] || r.status}</span></td>
+      <td>${r.findings_count}</td>
+      <td>${new Date(r.started_at).toLocaleString("fa-IR")}</td>
+      <td>${r.finished_at ? new Date(r.finished_at).toLocaleString("fa-IR") : "—"}</td>
+    </tr>
+  `).join("");
+}
+
+// ---------- تنظیمات ----------
+async function refreshSettings() {
+  const settings = await api("/api/settings");
+  document.getElementById("rps-input").value = settings.requests_per_second || 5;
+  document.getElementById("http-timeout-input").value = settings.http_timeout_seconds || 10;
+  document.getElementById("ssrf-oob-input").value = settings.ssrf_oob_domain || "";
+  document.getElementById("template-forge-auto-input").checked = !!settings.template_forge_auto_execute;
+}
+async function saveSettings() {
+  const rps = document.getElementById("rps-input").value;
+  const timeout = document.getElementById("http-timeout-input").value;
+  const ssrfOob = document.getElementById("ssrf-oob-input").value;
+  const templateForgeAuto = document.getElementById("template-forge-auto-input").checked;
+  await api("/api/settings", { method: "POST", body: JSON.stringify({ requests_per_second: rps, http_timeout_seconds: timeout, ssrf_oob_domain: ssrfOob, template_forge_auto_execute: templateForgeAuto }) });
+}
+
+// ---------- چرخه‌ی بروزرسانی ----------
+async function refreshAll() {
+  try {
+    await Promise.all([refreshScanSection(), refreshDomains(), refreshHunters(), refreshFindings(), refreshKeys(), refreshKnowledge(), refreshHistory(), refreshSettings()]);
+  } catch (e) { console.error(e); }
+}
+refreshAll();
+setInterval(() => { refreshScanSection(); }, 4000);
+setInterval(() => { refreshFindings(); refreshHistory(); }, 10000);
+</script>
+
+</body>
+</html>

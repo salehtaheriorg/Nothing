@@ -1,0 +1,12 @@
+{
+  "program_name": "example-program",
+  "in_scope": [
+    "example.com",
+    "*.example.com"
+  ],
+  "out_of_scope": [
+    "blog.example.com",
+    "status.example.com"
+  ],
+  "notes": "این فایل رو کپی کن به scope.json و با scope واقعی از صفحه‌ی رسمی برنامه (HackerOne/Bugcrowd/YesWeHack) پر کن. هر آیتمی که اینجا نباشه، هیچ Hunter‌ای بهش دست نمی‌زنه — این محدودیت توی کد اعمال می‌شه، نه توی prompt."
+}

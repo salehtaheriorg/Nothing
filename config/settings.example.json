@@ -1,0 +1,7 @@
+{
+  "requests_per_second": 5,
+  "http_timeout_seconds": 10,
+  "ssrf_oob_domain": "",
+  "template_forge_auto_execute": false,
+  "notes": "requests_per_second رو مطابق policy برنامه‌ی bug bounty‌ت تنظیم کن. اگه برنامه سقف مشخصی نگفته، همین مقدار پیش‌فرض (5) یه انتخاب محافظه‌کارانه و امنه. ssrf_oob_domain اختیاریه: یه دامنه‌ی Out-of-Band از سرویسی مثل interactsh.sh یا هر Collaborator دیگه که خودت کنترلش می‌کنی -- بدون این، SSRFHunter فقط می‌تونه SSRF غیر-blind (که محتوا reflect می‌شه) رو تشخیص بده. template_forge_auto_execute پیش‌فرض false هست (توصیه‌شده): TemplateForgeHunter تمپلیت‌های Nuclei سفارشی رو تولید و validate و ذخیره می‌کنه ولی اجراشون نمی‌کنه؛ فقط با تنظیم صریح این به true، تمپلیت‌های تولیدشده واقعاً روی هدف با nuclei اجرا می‌شن."
+}
