@@ -1,4 +1,5 @@
 # Bug Bounty Multi-Agent System (Overseer/Hunter)
+<img width="1365" height="727" src="https://github.com/user-attachments/assets/e18b7aa3-6b62-409f-a4a2-94dbc7cf8e72" />
 
 از این لینک میتوانید راهنمای راه اندازی صفر تا صد و معرفی پروژه را نیز ببینید (برای راه اندازی توصیه میشود):
 <a href="https://salehtaheriorg.github.io/Nothing" target="_blank" rel="noopener noreferrer">salehtaheriorg.github.io/Nothing</a>
