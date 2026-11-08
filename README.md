@@ -156,6 +156,12 @@ python -m compileall -q .
 
 ## English
 
+You can also find the complete setup guide, step-by-step instructions, and an introduction to the project at the following link (recommended for setup):
+
+[salehtaheriorg.github.io/Nothing](https://salehtaheriorg.github.io/Nothing)
+
+
+
 A multi-agent system for automating recon and vulnerability hunting in
 **authorized** bug bounty programs, shipped with a full web-based management
 dashboard. It is built around one non-negotiable principle:
