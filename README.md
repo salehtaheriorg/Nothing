@@ -17,10 +17,11 @@
 
 سیستم چندایجنتی برای اتوماسیون recon و vulnerability hunting در برنامه‌های
 bug bounty **مجاز**، به‌همراه یه داشبورد مدیریتی کامل تحت وب.
-
+<p dir="rtl">
 > [!IMPORTANT]
 > **scope enforcement توی کد سخت‌گیریه، نه توی prompt.**
 > LLM هرگز مستقیم subprocess صدا نمی‌زنه و هرگز نمی‌تونه scope.json رو دور بزنه.
+</p>
 
 بخش «planning» تکمیلی سیستم (Overseer.plan_next_steps، پیشنهاد الگو،
 و Template Forge) از **Gemini Flash** استفاده می‌کنه — یه کلید رایگان
