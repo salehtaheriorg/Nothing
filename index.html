@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="fa">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta content="dark" name="color-scheme"/>
+<meta content="#0a0e14" name="theme-color"/>
+<title>راهنمای کامل پروژه — Bug Bounty Multi-Agent System</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<style>
+  :root{
+    --bg:#0a0e14; --panel:#121924; --panel2:#0e141d; --border:#212c3a;
+    --ink:#dce4ee; --muted:#8496ab; --muted2:#5c6b80;
+    --accent:#4fd1c5; --accent-dim:#245853;
+    --go:#5ee6a8; --warn:#f0a860; --danger:#f2617a; --danger-dim:#4a2530;
+    --crit:#ff6b8b;
+    --mono:'JetBrains Mono','Vazirmatn',ui-monospace,monospace;
+    --sans:'Vazirmatn',Tahoma,system-ui,sans-serif;
+    --sidebar-w:270px; color-scheme:dark;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth; scroll-padding-top:24px; -webkit-text-size-adjust:100%;}
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto;} *{transition:none!important;}}
+  body{
+    margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans);
+    line-height:1.8; font-size:16px; overflow-x:clip;
+  }
+  ::selection{background:var(--accent-dim); color:#fff;}
+  a{color:var(--accent);}
+  h1,h2,h3,h4{font-family:var(--sans);}
+
+  .grid-bg{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size:64px 64px; opacity:.2;
+    -webkit-mask-image:radial-gradient(ellipse 90% 50% at 50% 0%, #000 0%, transparent 70%);
+            mask-image:radial-gradient(ellipse 90% 50% at 50% 0%, #000 0%, transparent 70%);
+  }
+
+  /* ---------- layout: sidebar + content ---------- */
+  .shell{position:relative; z-index:1; display:flex; max-width:1400px; margin:0 auto;}
+  nav.side{
+    width:var(--sidebar-w); flex-shrink:0; position:sticky; top:0; height:100vh; height:100dvh;
+    overflow-y:auto; padding:28px 18px; border-inline-end:1px solid var(--border);
+    scrollbar-width:thin; scrollbar-color:var(--border) transparent;
+  }
+  nav.side::-webkit-scrollbar{width:6px;}
+  nav.side::-webkit-scrollbar-thumb{background:var(--border); border-radius:4px;}
+  .side-brand{display:flex; align-items:center; gap:9px; padding:0 10px 20px; margin-bottom:14px; border-bottom:1px solid var(--border);}
+  .side-brand .sq{width:10px; height:10px; border-radius:3px; background:var(--accent); box-shadow:0 0 10px var(--accent);}
+  .side-brand b{font-size:14px;}
+  .side-brand span{display:block; color:var(--muted2); font-size:11px; font-family:var(--mono);}
+  .side-group{margin-bottom:4px;}
+  .side-group-label{font-family:var(--sans); font-size:11.5px; color:var(--muted2); padding:14px 10px 6px;}
+  nav.side a{
+    display:block; padding:8px 10px; border-radius:8px; color:var(--muted); text-decoration:none;
+    font-size:13.5px; margin-bottom:1px; transition:background .15s, color .15s;
+    border-inline-start:2px solid transparent;
+  }
+  nav.side a:hover{background:var(--panel); color:var(--ink);}
+  nav.side a.active{background:rgba(79,209,197,.09); color:var(--accent); border-inline-start-color:var(--accent);}
+  nav.side a .n{font-family:var(--mono); color:var(--muted2); margin-inline-end:7px; font-size:11.5px;}
+  nav.side a.active .n{color:var(--accent);}
+
+  main{flex:1; min-width:0; padding:0 40px 140px;}
+  .wrap{max-width:880px; margin:0 auto;}
+
+  #menu-toggle{display:none;}
+
+  /* ---------- hero ---------- */
+  header.hero{padding:64px 0 36px; text-align:center;}
+  .kicker{
+    display:inline-flex; align-items:center; gap:10px; font-family:var(--sans); font-size:13.5px;
+    color:var(--accent); background:rgba(79,209,197,.08);
+    border:1px solid rgba(79,209,197,.3); border-radius:100px; padding:7px 16px; margin-bottom:26px;
+  }
+  .kicker .dot{width:6px; height:6px; border-radius:50%; background:var(--go); box-shadow:0 0 8px var(--go);}
+  h1.title{font-size:clamp(28px,4.4vw,42px); font-weight:800; line-height:1.3; margin:0 0 16px;}
+  h1.title span{color:var(--accent);}
+  .sub{color:var(--muted); font-size:16.5px; max-width:600px; margin:0 auto;}
+  .hero-badges{display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:26px;}
+
+  /* ---------- section shell ---------- */
+  section{margin-top:80px; scroll-margin-top:24px;}
+  section.sub-hunter{margin-top:56px;}
+  .stage-head{display:flex; align-items:baseline; gap:14px; margin-bottom:22px; flex-wrap:wrap;}
+  .stage-num{
+    font-family:var(--mono); font-weight:700; font-size:13px; color:var(--accent);
+    background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:4px 10px; flex-shrink:0;
+  }
+  .stage-head h2{font-size:24px; margin:0; font-weight:700;}
+  .stage-head h3{font-size:19px; margin:0; font-weight:700;}
+  p.lead{color:var(--muted); margin-top:-10px; margin-bottom:22px; font-size:15.5px;}
+
+  /* ---------- cards / tables ---------- */
+  .card{background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:22px 24px; margin-bottom:16px;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  .grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px;}
+  @media(max-width:900px){.grid2,.grid3{grid-template-columns:1fr;}}
+
+  table{width:100%; border-collapse:collapse; font-size:14px;}
+  th{text-align:start; font-family:var(--sans); font-size:12.5px; color:var(--muted2); padding:0 12px 12px; font-weight:600;}
+  td{padding:12px; border-top:1px solid var(--border); vertical-align:top;}
+  tr:hover td{background:rgba(255,255,255,.015);}
+  td.mono, code{font-family:var(--mono); font-size:13px;}
+  code{background:var(--panel2); border:1px solid var(--border); border-radius:5px; padding:2px 7px; color:var(--accent); unicode-bidi:isolate; direction:ltr; overflow-wrap:anywhere; -webkit-box-decoration-break:clone; box-decoration-break:clone;}
+  .tbl-wrap{overflow-x:auto; border-radius:14px; border:1px solid var(--border);}
+  .tbl-wrap table{margin:0; min-width:480px;}
+  .tbl-scroll{overflow-x:auto;} .tbl-scroll table{min-width:460px;}
+  .tbl-wrap .card{border:none; border-radius:0; margin:0;}
+
+  /* ---------- terminal block ---------- */
+  .term{background:var(--panel2); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin:16px 0; box-shadow:0 20px 40px -20px rgba(0,0,0,.5); max-width:100%;}
+  .term-bar{display:flex; align-items:center; gap:8px; direction:ltr; padding:10px 16px; background:linear-gradient(180deg,#171f2b,#131a24); border-bottom:1px solid var(--border);}
+  .term-bar>span:not(.term-title){width:10px; height:10px; border-radius:50%; display:inline-block; flex-shrink:0;}
+  .term-bar span:nth-child(1){background:#f2617a;} .term-bar span:nth-child(2){background:#f0a860;} .term-bar span:nth-child(3){background:#5ee6a8;}
+  .term-title{margin-inline-start:8px; font-family:var(--mono); font-size:12px; color:var(--muted2);}
+  .term pre{margin:0; padding:16px 20px; font-family:var(--mono); font-size:13px; color:#c3ecc7; overflow-x:auto; direction:ltr; text-align:left; line-height:1.85; max-width:100%;}
+  .term pre .c{color:var(--muted2);}
+  .term pre .g{color:var(--go);}
+  .term pre .y{color:var(--warn);}
+  .term pre .r{color:var(--crit);}
+  .term.output pre{color:#a8b6c8; font-size:12.5px;}
+
+  .jsonblock{background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:14px 16px; font-family:var(--mono); font-size:12.5px; line-height:1.75; direction:ltr; text-align:left; overflow-x:auto; white-space:pre; max-width:100%;}
+
+  /* ---------- checklist ---------- */
+  .checklist{list-style:none; padding:0; margin:0; display:grid; gap:10px;}
+  .checklist li{display:flex; gap:12px; align-items:flex-start; background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:14px 16px;}
+  .checklist .ic{flex-shrink:0; width:22px; height:22px; border-radius:50%; margin-top:1px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700;}
+  .checklist .ic.must{background:rgba(240,168,96,.15); color:var(--warn); border:1px solid rgba(240,168,96,.4);}
+  .checklist b{display:block; margin-bottom:2px;}
+  .checklist .d{color:var(--muted); font-size:13.5px;}
+
+  /* ---------- callouts ---------- */
+  .callout{border-radius:12px; padding:16px 20px; margin:16px 0; border:1px solid; font-size:14.5px;}
+  .callout.warn{background:rgba(240,168,96,.08); border-color:rgba(240,168,96,.35);}
+  .callout.warn .t{color:var(--warn); font-weight:700; margin-bottom:6px; font-size:13.5px;}
+  .callout.info{background:rgba(79,209,197,.07); border-color:rgba(79,209,197,.3);}
+  .callout.info .t{color:var(--accent); font-weight:700; margin-bottom:6px; font-size:13.5px;}
+  .callout.danger{background:rgba(242,97,122,.08); border-color:rgba(242,97,122,.35);}
+  .callout.danger .t{color:var(--danger); font-weight:700; margin-bottom:6px; font-size:13.5px;}
+  .callout.go{background:rgba(94,230,168,.07); border-color:rgba(94,230,168,.3);}
+  .callout.go .t{color:var(--go); font-weight:700; margin-bottom:6px; font-size:13.5px;}
+  .callout ul{margin:6px 0 0; padding-inline-start:20px;}
+  .callout li{margin-bottom:4px;}
+
+  /* ---------- badges ---------- */
+  .badge{display:inline-block; font-family:var(--mono); font-size:11px; padding:3px 9px; border-radius:6px; border:1px solid var(--border); color:var(--muted); margin-inline-end:6px;}
+  .badge.req{color:var(--warn); border-color:rgba(240,168,96,.4); background:rgba(240,168,96,.08);}
+  .badge.opt{color:var(--muted);}
+  .badge.sev-critical{color:var(--crit); border-color:rgba(255,107,139,.4); background:rgba(255,107,139,.1);}
+  .badge.sev-high{color:var(--danger); border-color:rgba(242,97,122,.4); background:rgba(242,97,122,.1);}
+  .badge.sev-medium{color:var(--warn); border-color:rgba(240,168,96,.4); background:rgba(240,168,96,.1);}
+  .badge.sev-low, .badge.sev-info{color:var(--accent); border-color:rgba(79,209,197,.35); background:rgba(79,209,197,.08);}
+
+  /* ---------- hunter cards ---------- */
+  .hunter-card{background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:26px 28px; margin-bottom:20px;}
+  .hunter-head{display:flex; align-items:center; gap:14px; margin-bottom:6px; flex-wrap:wrap;}
+  .hunter-emoji{font-size:22px; width:44px; height:44px; border-radius:12px; background:var(--panel2); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .hunter-head h3{margin:0; font-size:18.5px;}
+  .hunter-idx{font-family:var(--mono); color:var(--muted2); font-size:12px;}
+
+  /* ---------- two-path chooser ---------- */
+  .path{background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:22px 24px;}
+  .path .tag{font-family:var(--mono); font-size:11px; letter-spacing:.08em; color:var(--muted2); text-transform:uppercase; margin-bottom:8px;}
+  .path h3{margin:0 0 10px; font-size:17px;}
+
+  /* ---------- bug report cards (audit) ---------- */
+  .bug{background:var(--panel); border:1px solid var(--border); border-inline-start:3px solid var(--danger); border-radius:12px; padding:20px 22px; margin-bottom:14px;}
+  .bug.medium{border-inline-start-color:var(--warn);}
+  .bug.low{border-inline-start-color:var(--accent);}
+  .bug-head{display:flex; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap;}
+  .bug-num{font-family:var(--mono); color:var(--muted2); font-size:13px;}
+  .bug h4{margin:0; font-size:15.5px;}
+  .bug p{margin:8px 0 0; font-size:14px; color:var(--ink);}
+  .bug .status{margin-top:10px; display:flex; gap:14px; flex-wrap:wrap; font-size:12.5px; font-family:var(--mono);}
+  .bug .status b{color:var(--go);}
+
+  /* ---------- sidebar-section index cards (for section 7 dashboard, hunters list) ---------- */
+  .idx-card{display:flex; gap:12px; align-items:flex-start; background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:8px;}
+  .idx-card .e{font-size:18px;}
+  .idx-card b{display:block; font-size:14px; margin-bottom:3px;}
+  .idx-card span{color:var(--muted); font-size:13px;}
+
+  footer{margin-top:100px; padding-top:28px; border-top:1px solid var(--border); text-align:center; color:var(--muted2); font-size:13px; font-family:var(--mono);}
+
+  /* ---------- mobile ---------- */
+  .mobile-bar{display:none;} .backdrop{display:none;}
+  @media(max-width:980px){
+    .shell{display:block; position:static; z-index:auto;}
+    nav.side{overscroll-behavior:contain; -webkit-overflow-scrolling:touch;}
+    nav.side{position:fixed; right:0; top:0; height:100vh; height:100dvh; z-index:50; background:var(--bg);
+      transform:translateX(100%); visibility:hidden; transition:transform .25s ease, visibility .25s; width:82vw; max-width:320px;}
+    #menu-toggle:checked ~ .shell nav.side{transform:translateX(0); visibility:visible;}
+    .backdrop{display:block; position:fixed; inset:0; z-index:45; background:rgba(0,0,0,.55); opacity:0; pointer-events:none; transition:opacity .25s;}
+    #menu-toggle:checked ~ .backdrop{opacity:1; pointer-events:auto;}
+    body:has(#menu-toggle:checked){overflow:hidden;}
+    html{scroll-padding-top:72px;} section{scroll-margin-top:72px;}
+    .hunter-card{padding:20px 18px;} .card{padding:18px 16px;}
+    main{padding:0 18px 100px;}
+    .mobile-bar{
+      display:flex; align-items:center; gap:10px; position:sticky; top:0; z-index:40; background:rgba(10,14,20,.92);
+      backdrop-filter:blur(8px); padding:14px 18px; border-bottom:1px solid var(--border);
+    }
+    .mobile-bar label{cursor:pointer; font-family:var(--mono); font-size:13px; color:var(--accent); border:1px solid var(--border); border-radius:8px; padding:6px 12px;}
+    .grid3{grid-template-columns:1fr;}
+  }
+  h1,h2,h3{text-wrap:balance;} p,li{text-wrap:pretty;}
+  /* ---------- laptop / desktop tuning ---------- */
+  @media(min-width:981px) and (max-width:1280px){
+    :root{--sidebar-w:240px;}
+    main{padding:0 28px 120px;}
+    nav.side{padding:22px 12px;}
+  }
+  @media(min-width:981px) and (max-height:820px){
+    nav.side{padding-top:16px; padding-bottom:16px;}
+    .side-brand{padding-bottom:12px; margin-bottom:8px;}
+    nav.side a{padding:5px 10px; font-size:13px;}
+    .side-group-label{padding-top:10px;}
+    header.hero{padding:40px 0 24px;}
+    section{margin-top:64px;}
+  }
+  @media(min-width:1500px){
+    :root{--sidebar-w:290px;}
+    .shell{max-width:1640px;}
+    .wrap{max-width:980px;}
+    body{font-size:17px;}
+    nav.side a{font-size:14px;}
+  }
+  a:focus-visible, label:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px;}
+  @media print{
+    :root{--bg:#fff; --panel:#fff; --panel2:#f5f5f5; --border:#ccc; --ink:#111; --muted:#444; --muted2:#666; --accent:#0a6b63;}
+    .grid-bg,nav.side,.mobile-bar,.backdrop{display:none!important;}
+    main{padding:0;} .card,.hunter-card,.bug,.term,.callout{break-inside:avoid;}
+    .term pre{color:#111;}
+  }
+
+  /* ---------- language switch + copy button ---------- */
+  .lang-btn{position:fixed; top:12px; inset-inline-end:16px; z-index:44; font-family:var(--sans); font-size:12.5px; font-weight:600; color:var(--accent); background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:5px 12px; cursor:pointer; line-height:1.5; transition:background .15s,border-color .15s;}
+  .lang-btn:hover{background:var(--panel2); border-color:var(--accent-dim);}
+  .copy-btn{margin-inline-start:auto; font-family:var(--mono); font-size:11.5px; color:var(--muted); background:transparent; border:1px solid var(--border); border-radius:6px; padding:2px 10px; cursor:pointer; transition:color .15s,border-color .15s;}
+  .copy-btn:hover{color:var(--accent); border-color:var(--accent-dim);}
+  .copy-btn.done{color:var(--go); border-color:rgba(94,230,168,.4);}
+  .lang-btn:focus-visible,.copy-btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+  @media(max-width:980px){
+    html[dir=ltr] nav.side{right:auto; left:0; transform:translateX(-100%);}
+    html[dir=ltr] #menu-toggle:checked ~ .shell nav.side{transform:translateX(0);}
+  }
+  @media print{.lang-btn,.copy-btn{display:none!important;}}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<input aria-hidden="true" id="menu-toggle" tabindex="-1" type="checkbox"/>
+<label class="backdrop" for="menu-toggle"></label>
+<div class="mobile-bar">
+<label aria-controls="sidenav" aria-label="باز و بسته کردن فهرست" data-i="1" for="menu-toggle" role="button" tabindex="0">☰ فهرست</label><span data-i="2" style="display:contents">
+<b style="font-size:13px;">راهنمای پروژه</b>
+</span></div>
+<div class="shell">
+<nav aria-label="فهرست راهنما" class="side" id="sidenav">
+<div class="side-brand"><span class="sq"></span><div data-i="3"><b>bugbounty_agent</b><span>راهنمای کامل</span></div></div>
+<div class="side-group">
+<a data-i="4" href="#hero"><span class="n">·</span>شروع</a>
+</div>
+<div class="side-group-label" data-i="5">راه‌اندازی</div>
+<div class="side-group">
+<a data-i="6" href="#s-arch"><span class="n">۰۱</span>معماری سیستم</a>
+<a data-i="7" href="#s-prereq"><span class="n">۰۲</span>پیش‌نیازها</a>
+<a data-i="8" href="#s-install"><span class="n">۰۳</span>نصب گام‌به‌گام</a>
+<a data-i="9" href="#s-config"><span class="n">۰۴</span>فایل‌های Config</a>
+<a data-i="10" href="#s-test"><span class="n">۰۵</span>تست قبل از اجرا</a>
+<a data-i="11" href="#s-run"><span class="n">۰۶</span>اجرای واقعی</a>
+</div>
+<div class="side-group-label" data-i="12">۱۱ هانتر</div>
+<div class="side-group">
+<a data-i="13" href="#s-hunters"><span class="n">۰۷</span>معرفی کلی</a>
+<a href="#h-recon"><span class="n">–</span>Recon</a>
+<a href="#h-idor"><span class="n">–</span>IDOR</a>
+<a href="#h-xss"><span class="n">–</span>XSS</a>
+<a href="#h-cors"><span class="n">–</span>CORS/Redirect</a>
+<a href="#h-ssrf"><span class="n">–</span>SSRF</a>
+<a href="#h-nuclei"><span class="n">–</span>Nuclei</a>
+<a href="#h-forge"><span class="n">–</span>Template Forge</a>
+<a href="#h-paramminer"><span class="n">–</span>Param Miner</a>
+<a href="#h-takeover"><span class="n">–</span>Takeover</a>
+<a href="#h-secrets"><span class="n">–</span>Secrets</a>
+<a href="#h-diffscan"><span class="n">–</span>DiffScan</a>
+<a href="#h-knowledge"><span class="n">–</span>Knowledge Base <span style="opacity:.6;">*</span></a>
+</div>
+<div class="side-group-label" data-i="14">استفاده</div>
+<div class="side-group">
+<a data-i="15" href="#s-dashboard"><span class="n">۰۸</span>داشبورد وب</a>
+<a data-i="16" href="#s-report"><span class="n">۰۹</span>بررسی و ارسال گزارش</a>
+<a data-i="17" href="#s-trouble"><span class="n">۱۰</span>عیب‌یابی</a>
+</div>
+</nav>
+<main>
+<div class="wrap">
+<header class="hero" id="hero">
+<div class="kicker" data-i="21"><span class="dot"></span> راهنمای کامل پروژه</div>
+<h1 class="title" data-i="22">از <span>صفر</span> تا <span>صد</span><br/>Bug Bounty Multi-Agent System</h1>
+<p class="sub" data-i="23">معماری، نصب، تنظیم، هر ۱۱ هانتر، داشبورد، و آموزش کامل استفاده — همه‌ی چیزی که توی راهنمای پروژه هست، یک‌جا.</p>
+<div class="hero-badges" data-i="24">
+<span class="badge">۱۱ هانتر</span>
+<span class="badge">داشبورد وب</span>
+<span class="badge go" style="color:var(--go); border-color:rgba(94,230,168,.35); background:rgba(94,230,168,.08);">ممیزی‌شده امنیتی</span>
+</div>
+</header>
+<!-- ============ ARCHITECTURE ============ -->
+<section id="s-arch">
+<div class="stage-head"><span data-i="25" style="display:contents"><span class="stage-num">۰۱</span></span><h2 data-i="26">معماری کامل سیستم</h2></div>
+<p class="lead" data-i="27">همه‌چیز از یه نقطه شروع می‌شه (<code>main.py</code>) و از لایه‌های ثابتی رد می‌شه — قبل از اینکه هیچ هانتری اجرا بشه.</p>
+<div class="term">
+<div class="term-bar"><span></span><span></span><span></span><span class="term-title">architecture</span></div>
+<pre>                         main.py
+                            │
+                            ▼
+                   ┌─────────────────┐
+                   │    Overseer      │  seed_recon() + seed_vuln_hunters_from_recon()
+                   │  (+ Gemini API)  │  + plan_next_steps() <span class="c" data-i="28">تکمیلی</span>
+                   └────────┬─────────┘
+                            │ <span class="c" data-i="29">تسک‌ها ثبت می‌شن در</span>
+                            ▼
+                   ┌─────────────────┐
+                   │    TaskStore     │  Kanban: todo → in_progress → done/failed
+                   └────────┬─────────┘
+                            │
+        ┌───────────┬───────┴───┬────────────┬────────────┬─────────────┐
+        ▼           ▼           ▼            ▼            ▼             ▼
+  ReconHunter   IDORHunter  XSSHunter   CorsRedirect  NucleiHunter  TakeoverHunter
+        │           │           │            │            │             │
+        └───────────┴───────┬───┴────────────┴────────────┴─────────────┘
+                             │
+                  <span class="c" data-i="30">قبل از صف‌شدن، از این هم رد می‌شن:</span>
+                             ▼
+                    ┌─────────────────────┐
+                    │  DiffStore (هانتر ۷) │  <span class="c" data-i="31">فقط asset های جدید رو صف می‌کنه</span>
+                    └─────────────────────┘
+                            │  <span class="c" data-i="32">همه از این عبور می‌کنن</span>
+                            ▼
+                   ┌─────────────────┐
+                   │   ScopeGuard     │  <span class="y">⚠ لایه‌ی اجباری، توی کد نه prompt</span>
+                   └─────────────────┘
+                            │
+                            ▼
+                   ┌─────────────────┐
+                   │  FindingsStore   │  → report_generator.py → reports/*.md
+                   └────────┬─────────┘
+                            │
+                            ▼
+                ┌───────────────────────┐
+                │  <span class="g">داشبورد وب (Flask)</span>   │  127.0.0.1:5000 — <span class="g">کنترل کامل سیستم</span>
+                └───────────────────────┘</pre>
+</div>
+<div class="card">
+<h3 data-i="33" style="margin-top:0; font-size:16px;">جریان کامل یک اجرا</h3>
+<ol style="color:var(--ink); font-size:14.5px; padding-inline-start:22px; margin-bottom:0;">
+<li data-i="34"><code>Overseer.seed_recon()</code> برای هر دامنه‌ی scope یه تسک recon می‌سازه</li>
+<li data-i="35"><b>ReconHunter</b> اجرا می‌شه: subfinder → فیلتر scope → httpx → فیلتر scope → katana → فیلتر scope</li>
+<li data-i="36">از روی نتیجه، <code>seed_vuln_hunters_from_recon()</code> به‌صورت <b>قطعی</b> (نه حدس LLM) و بعد از فیلتر DiffScan، همه‌ی هانترهای دیگه رو seed می‌کنه</li>
+<li data-i="37">یه دور تکمیلی، <code>plan_next_steps()</code> از Gemini می‌پرسه چیز اضافه‌ای هم لازمه یا نه — با همون ScopeGuard دوباره فیلتر می‌شه</li>
+<li data-i="38">هر هانتر روی صف خودش اجرا می‌شه؛ هر finding با <code>report_finding()</code> ثبت می‌شه</li>
+<li data-i="39">برای هر finding یه گزارش draft مارک‌داون توی <code>reports/</code> ساخته می‌شه</li>
+<li data-i="40"><code>core/scan_runner.py</code> کل این جریان رو توی یه تابع واحد پیچیده — هم CLI هم داشبورد همینو صدا می‌زنن</li>
+</ol>
+</div>
+</section>
+<!-- ============ PREREQUISITES ============ -->
+<section id="s-prereq">
+<div class="stage-head"><span data-i="41" style="display:contents"><span class="stage-num">۰۲</span></span><h2 data-i="42">پیش‌نیازها</h2></div>
+<div class="tbl-wrap"><div class="card">
+<div class="tbl-scroll"><table>
+<thead><tr><th data-i="43">ابزار</th><th data-i="44">برای چی</th></tr></thead>
+<tbody>
+<tr><td><b>Python 3.10+</b></td><td data-i="45">اجرای خود کد</td></tr>
+<tr><td><b>Go</b></td><td data-i="46">نصب subfinder/httpx/katana/nuclei</td></tr>
+<tr><td data-i="47"><b>Gemini API key (رایگان از Google AI Studio)</b></td><td data-i="48">تصمیم‌گیری تکمیلی Overseer</td></tr>
+<tr><td data-i="49">Playwright + Chromium <span class="badge opt">اختیاری</span></td><td data-i="50">تأیید واقعی اجرای XSS با مرورگر headless</td></tr>
+<tr><td><b>dnspython</b></td><td data-i="51">resolve کردن CNAME برای TakeoverHunter (توی requirements.txt هست)</td></tr>
+<tr><td data-i="52">اکانت تست در برنامه‌ی هدف</td><td data-i="53">برای IDORHunter (باید session خودت رو بدی)</td></tr>
+<tr><td data-i="54">اکانت تأییدشده در یه برنامه‌ی Bug Bounty</td><td data-i="55">تا scope واقعی و مجاز داشته باشی</td></tr>
+</tbody>
+</table></div>
+</div></div>
+</section>
+<!-- ============ INSTALL ============ -->
+<section id="s-install">
+<div class="stage-head"><span data-i="56" style="display:contents"><span class="stage-num">۰۳</span></span><h2 data-i="57">نصب گام‌به‌گام</h2></div>
+<div class="callout info">
+<div class="t" data-i="58">می‌خوای مستقیم بری سراغ داشبورد؟</div><span data-i="59" style="display:contents">
+      از این نسخه به بعد، تنظیم scope/API key/session‌ها رو یا دستی (این بخش) یا از <b>داشبورد وب</b> (بخش ۰۸) انجام بده. اگه داشبورد رو ترجیح می‌دی، فقط گام‌های ۱ تا ۳ همین بخش (نصب) رو انجام بده و برو مستقیم بخش ۰۸.
+    </span></div>
+<h3 data-i="60" style="font-size:16px; margin:28px 0 8px;">گام ۱ — استخراج و venv</h3>
+<div class="term">
+<div class="term-bar"><span></span><span></span><span></span><span class="term-title">terminal</span></div>
+<pre>unzip bugbounty_agent.zip
+cd bugbounty_agent
+python3 -m venv venv
+source venv/bin/activate      <span class="c"># Windows: venv\Scripts\activate</span>
+pip install -r requirements.txt</pre>
+</div>
+<h3 data-i="61" style="font-size:16px; margin:28px 0 8px;">گام ۲ — Playwright <span class="badge opt">اختیاری ولی پیشنهادی</span></h3>
+<p data-i="62" style="color:var(--muted); font-size:14.5px; margin-bottom:10px;">برای اینکه XSSHunter بتونه واقعاً تأیید کنه کد اجرا شده، نه فقط heuristic حدس بزنه:</p>
+<div class="term">
+<div class="term-bar"><span></span><span></span><span></span><span class="term-title">terminal</span></div>
+<pre>playwright install chromium</pre>
+</div>
+<p data-i="63" style="color:var(--muted); font-size:13.5px;">اگه این مرحله رو رد کنی، XSSHunter هنوز کار می‌کنه ولی findingهاش همیشه <code>confidence: candidate</code> می‌مونن.</p>
+<h3 data-i="64" style="font-size:16px; margin:28px 0 8px;">گام ۳ — ابزارهای recon و nuclei</h3>
+<div class="term">
+<div class="term-bar"><span></span><span></span><span></span><span class="term-title">terminal</span></div>
+<pre>go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
+go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest
+go install -v github.com/projectdiscovery/katana/cmd/katana@latest
+go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest</pre>
+</div>
+<p data-i="65" style="color:var(--muted); font-size:14.5px; margin:14px 0 8px;">مطمئن شو <code>$HOME/go/bin</code> توی PATH هست:</p>
+<div class="term">
+<div class="term-bar"><span></span><span></span><span></span><span class="term-title">terminal</span></div>
+<pre>export PATH=$PATH:$HOME/go/bin
+subfinder -version &amp;&amp; httpx -version &amp;&amp; katana -version &amp;&amp; nuclei -version</pre>
+</div>
+<p data-i="66" style="color:var(--muted); font-size:14.5px; margin:14px 0 8px;">اولین اجرای nuclei، تمپلیت‌های عمومی رو دانلود می‌کنه (چند دقیقه طول می‌کشه):</p>
+<div class="term">
+<div class="term-bar"><span></span><span></span><span></span><span class="term-title">terminal</span></div>
+<pre>nuclei -update-templates</pre>
+</div>
+<h3 data-i="67" style="font-size:16px; margin:28px 0 8px;">گام ۴ — API Key</h3>
+<p data-i="68" style="color:var(--muted); font-size:14.5px; margin-bottom:10px;">یه کلید رایگان از <a href="https://aistudio.google.com/apikey" rel="noopener" target="_blank">Google AI Studio</a> بگیر (بدون کارت اعتباری):</p>
+<div class="term">
+<div class="term-bar"><span></span><span></span><span></span><span class="term-title">terminal</span></div>
+<pre>export GEMINI_API_KEY="AIza..."</pre>
+</div>
+<p data-i="69" style="color:var(--muted); font-size:13.5px; margin-top:10px;">مدل پیش‌فرض <code>gemini-3.7-flash</code> هست — یه model ID مشخص و pin‌شده (نه alias «-latest» که طبق مستندات خود گوگل می‌تونه بی‌خبر عوض بشه و 404 بده). اگه بعداً خواستی مدل رو عوض کنی، فقط <code>GEMINI_MODEL</code> رو ست کن، لازم نیست کد رو دست بزنی:</p>
+<div class="term">
+<div class="term-bar"><span></span><span></span><span></span><span class="term-title">terminal</span></div>
+<pre>export GEMINI_MODEL="gemini-3.7-flash"   <span class="c" data-i="70"># اختیاری — دیفالت همینه</span></pre>
+</div>
+</section>
+<!-- ============ CONFIG ============ -->
+<section id="s-config">
+<div class="stage-head"><span data-i="71" style="display:contents"><span class="stage-num">۰۴</span></span><h2 data-i="72">تنظیم فایل‌های Config</h2></div>
+<p class="lead" data-i="73">این بخش رو با دقت انجام بده — این‌ها لایه‌ی محافظتی واقعی سیستمن.</p>
+<div class="hunter-card" style="margin-bottom:20px;">
+<div class="hunter-head"><span data-i="74" style="display:contents"><span class="badge req">اجباری</span></span><h3 data-i="75" style="font-size:16.5px;">۴.۱ — scope.json</h3></div>
+<div class="term" style="margin-top:14px;">
+<div class="term-bar"><span></span><span></span><span></span><span class="term-title">terminal</span></div>
+<pre>cp config/scope.example.json config/scope.json</pre>
+</div>
+<p data-i="76" style="color:var(--muted); font-size:14px; margin:12px 0 8px;">با scope رسمی برنامه پرش کن:</p>
+<div class="jsonblock">{
+  "program_name": "نام-برنامه",
+  "in_scope": ["target.com", "*.target.com"],
+  "out_of_scope": ["blog.target.com"]
+}</div>
+<div class="callout warn" style="margin-bottom:0;">
+<div class="t" data-i="77">نکته‌ی مهم درباره‌ی out_of_scope</div><span data-i="78" style="display:contents">
+        برخلاف <code>in_scope</code> (که برای شامل کردن زیردامنه‌ها باید صریحاً از <code>*.</code> استفاده کنی)، هر آیتم توی <code>out_of_scope</code> <b>به‌صورت پیش‌فرض همه‌ی زیردامنه‌هاشو هم رد می‌کنه</b>، حتی بدون <code>*.</code>. یعنی <code>"internal.target.com"</code> هم خودش هم <code>api.internal.target.com</code> رو رد می‌کنه. این عمداً این‌طوریه: برای یه ابزار امنیتی، رد کردن بیش‌ازحد بی‌خطره، ولی از قلم انداختن یه چیزی که باید رد بشه می‌تونه یعنی اسکن یه چیزی که مجاز نبوده.
+      </span></div>
+</div>
+<div class="grid2">
+<div class="hunter-card" style="margin-bottom:0;">
+<div class="hunter-head"><span data-i="79" style="display:contents"><span class="badge opt">اختیاری</span></span><h3 data-i="80" style="font-size:16.5px;">۴.۲ — settings.json</h3></div>
+<p data-i="81" style="color:var(--muted); font-size:13.5px; margin:10px 0;">پیش‌فرض‌ها معقولن. اگه policy برنامه سقف نرخ درخواست اعلام کرده، همینجا تنظیمش کن.</p>
+<div class="jsonblock">{
+  "requests_per_second": 5
+}</div>
+<p data-i="82" style="color:var(--warn); font-size:12.5px; margin:10px 0 0;">رعایت‌نکردن این محدودیت می‌تونه باعث بن‌شدن اکانتت بشه.</p>
+</div>
+<div class="hunter-card" style="margin-bottom:0;">
+<div class="hunter-head"><span data-i="83" style="display:contents"><span class="badge opt">اختیاری</span></span><h3 data-i="84" style="font-size:16.5px;">۴.۳ — auth.json</h3></div>
+<p data-i="85" style="color:var(--muted); font-size:13.5px; margin:10px 0;">فقط برای IDORHunter — <b style="color:var(--ink);">باید session اکانت تست خودت باشه</b>، نه شخص دیگه.</p>
+<div class="jsonblock" style="font-size:11px;">{
+  "session_a": {
+    "cookie": "PHPSESSID=...",
+    "headers": {"Authorization": ""}
+  },
+  "session_b": {"cookie": "", "headers": {}}
+}</div>
+</div>
+</div>
+<div class="card" style="margin-top:4px;">
+<ul style="margin:0; padding-inline-start:20px; font-size:14px; color:var(--muted);">
+<li data-i="86">فقط <code>session_a</code> پر باشه: چک می‌کنه داده‌ی نیازمند لاگین بدون auth هم در دسترسه (broken access control)</li>
+<li data-i="87">هر دو پر باشن: تست دقیق‌تر IDOR (آیا اکانت B به منبع اکانت A دسترسی داره)</li>
+<li data-i="88">بدون این فایل: تست increment/decrement بدون session انجام نمی‌شه و IDORHunter عملاً skip می‌شه</li>
+</ul>
+</div>
+</section>
+<!-- ============ PRE-FLIGHT TEST ============ -->
+<section id="s-test">
+<div class="stage-head"><span data-i="89" style="display:contents"><span class="stage-num">۰۵</span></span><h2 data-i="90">تست قبل از اجرای واقعی</h2></div>
+<div class="term">
+<div class="term-bar"><span></span><span></span><span></span><span class="term-title">terminal</span></div>
+<pre>python3 test_scope.py</pre>
+</div>
+<p data-i="91" style="color:var(--muted); font-size:14.5px;">باید همه‌جا ✅ ببینی. این تضمین می‌کنه لایه‌ی امنیتی scope درست کار می‌کنه — قبل از اینکه یه هدف واقعی رو لمس کنی.</p>
+</section>
+<!-- ============ RUN ============ -->
+<section id="s-run">
+<div class="stage-head"><span data-i="92" style="display:contents"><span class="stage-num">۰۶</span></span><h2 data-i="93">اجرای واقعی</h2></div>
+<div class="term">
+<div class="term-bar"><span></span><span></span><span></span><span class="term-title">terminal</span></div>
+<pre>python main.py</pre>
+</div>
+<p data-i="94" style="color:var(--muted); font-size:14px; margin:20px 0 8px;">نمونه‌ی خروجی:</p>
+<div class="term output">
+<div class="term-bar"><span></span><span></span><span></span><span class="term-title">output</span></div>
+<pre>[overseer] 2 تسک recon اولیه ثبت شد
+
+=== مرحله‌ی Recon ===
+[recon] target.com: 47 ساب‌دامین, 12 هاست زنده, 340 URL
+[overseer] از روی recon: 58 تسک IDOR، 58 تسک XSS، 12 تسک nuclei ثبت شد
+
+=== مرحله‌ی takeover ===
+<span class="y">[takeover] 🟡 یافته‌ی جدید (high/candidate): Subdomain Takeover (Heroku) در old-app.target.com</span>
+[takeover] 47 تسک پردازش شد
+
+=== مرحله‌ی idor ===
+<span class="y">[idor] 🟡 یافته‌ی جدید (medium/candidate): Sequential ID Access ...</span>
+[idor] 58 تسک پردازش شد
+
+=== مرحله‌ی xss ===
+<span class="r">[xss] 🔴 یافته‌ی جدید (high/confirmed): Reflected XSS در https://...</span>
+[xss] 58 تسک پردازش شد
+
+=== مرحله‌ی nuclei ===
+[nuclei] 12 تسک پردازش شد
+
+=== خلاصه‌ی یافته‌ها ===
+<span class="g">کل یافته‌ها: 4 | بر اساس شدت: {'medium': 2, 'high': 1, 'low': 1}</span>
+
+4 گزارش draft ساخته شد در پوشه‌ی reports/
+⚠️  قبل از ارسال هر گزارش، حتماً دستی بررسی و تأیید کن.</pre>
+</div>
+</section>
+<!-- ============ HUNTERS OVERVIEW ============ -->
+<section id="s-hunters">
+<div class="stage-head"><span data-i="95" style="display:contents"><span class="stage-num">۰۷</span></span><h2 data-i="96">هر ۱۱ هانتر</h2></div>
+<p class="lead" data-i="97">هر هانتر یه فایل جدا توی <code>hunters/</code> هست. اکثرشون روی همون لیست URL‌های crawl‌شده اجرا می‌شن — بدون seeding جداگانه.</p>
+<div class="callout go">
+<div class="t" data-i="98">زیرساخت مشترک</div><span data-i="99" style="display:contents">
+      IDOR، XSS، CORS/Redirect، و SSRF دقیقاً همون لیست <code>param_urls</code> (هر URL دارای query parameter) رو به اشتراک می‌ذارن. یعنی اگه یکی روی یه URL تست می‌کنه، بقیه هم همون‌جا و با همون diff-filtering اجرا می‌شن.
+    </span></div>
+</section>
+<!-- Recon -->
+<section class="sub-hunter" id="h-recon">
+<div class="hunter-card">
+<div class="hunter-head"><span class="hunter-emoji">🛰️</span><div><h3>ReconHunter</h3><span data-i="100" style="display:contents"><span class="hunter-idx">هانتر پایه — نقطه‌ی شروع هر اسکن</span></span></div></div>
+<p data-i="101" style="color:var(--ink); font-size:14.5px;">سه ابزار رو زنجیره می‌کنه: <b>subfinder</b> (پیدا کردن ساب‌دامین) → فیلتر ScopeGuard → <b>httpx</b> (چک زنده‌بودن) → فیلتر دوباره → <b>katana</b> (کراول URL) → فیلتر دوباره. خروجی نهایی (ساب‌دامین‌ها، هاست‌های زنده، URLها) پایه‌ی seed شدن همه‌ی هانترهای دیگه‌ست.</p>
+<div class="callout warn" style="margin-bottom:0;">
+<div class="t" data-i="102">چرا فیلتر سه بار؟</div><span data-i="103" style="display:contents">
+        هر مرحله جدا از ScopeGuard رد می‌شه — نه فقط خروجی نهایی. یعنی حتی اگه subfinder یه زیردامنه‌ی خارج از scope برگردونه، همون‌جا حذف می‌شه و هیچ‌وقت به httpx/katana نمی‌رسه.
+      </span></div>
+</div>
+</section>
+<!-- IDOR -->
+<section class="sub-hunter" id="h-idor">
+<div class="hunter-card">
+<div class="hunter-head"><span class="hunter-emoji">🔓</span><div><h3>IDORHunter</h3><span class="hunter-idx">Broken Access Control + Cross-Account IDOR</span></div></div>
+<p data-i="104" style="color:var(--ink); font-size:14.5px;">۳ نوع تست، بسته به اینکه <code>auth.json</code> رو چقدر پر کرده باشی:</p>
+<div class="tbl-scroll"><table>
+<thead><tr><th data-i="105">تست</th><th data-i="106">نیاز به config</th></tr></thead>
+<tbody>
+<tr><td data-i="107">Broken Access Control (بدون auth، داده در دسترسه؟)</td><td><code>session_a</code></td></tr>
+<tr><td data-i="108">Cross-Account IDOR (اکانت B به منبع A دسترسی داره؟)</td><td><code>session_a</code> + <code>session_b</code></td></tr>
+<tr><td data-i="109">Sequential ID Access (نیاز به بررسی دستی)</td><td data-i="110">بدون session هم اجرا می‌شه</td></tr>
+</tbody>
+</table></div>
+<p data-i="111" style="color:var(--muted); font-size:13.5px; margin-bottom:0;">بدون <code>auth.json</code> پرشده، فقط تست سوم اجرا می‌شه — برای IDOR واقعی، حتماً بخش ۴.۳ رو پر کن.</p>
+</div>
+</section>
+<!-- XSS -->
+<section class="sub-hunter" id="h-xss">
+<div class="hunter-card">
+<div class="hunter-head"><span class="hunter-emoji">⚡</span><div><h3>XSSHunter</h3><span data-i="112" style="display:contents"><span class="hunter-idx">Reflected XSS + تأیید واقعی با مرورگر</span></span></div></div>
+<p data-i="113" style="color:var(--ink); font-size:14.5px;">payload رو توی هر پارامتر تزریق می‌کنه، بعد اگه Playwright نصب باشه، واقعاً توی یه Chromium headless صفحه رو باز می‌کنه و چک می‌کنه <code>alert()</code> واقعاً اجرا شد یا نه.</p>
+<div class="tbl-scroll"><table>
+<thead><tr><th data-i="114">حالت</th><th>confidence</th></tr></thead>
+<tbody>
+<tr><td data-i="115">Playwright نصب و alert() واقعاً اجرا شد</td><td><span class="badge sev-high">confirmed</span></td></tr>
+<tr><td data-i="116">Playwright نصب نیست، فقط reflection دیده شد</td><td><span class="badge sev-medium">candidate</span></td></tr>
+</tbody>
+</table></div>
+</div>
+</section>
+<!-- CORS/Redirect -->
+<section class="sub-hunter" id="h-cors">
+<div class="hunter-card">
+<div class="hunter-head"><span class="hunter-emoji">🌐</span><div><h3>CorsRedirectHunter</h3><span class="hunter-idx">CORS Misconfiguration + Open Redirect</span></div></div>
+<h4 data-i="117" style="font-size:14.5px; margin:18px 0 10px;">تست CORS — سه نوع Origin ساختگی</h4>
+<div class="tbl-scroll"><table>
+<thead><tr><th data-i="118">نوع تست</th><th data-i="119">چی می‌فرسته</th><th data-i="120">یعنی چی اگه reflect بشه</th></tr></thead>
+<tbody>
+<tr><td class="mono" style="font-size:12px;">arbitrary_origin_reflected</td><td data-i="121">دامنه‌ی کاملاً بی‌ربط</td><td data-i="122">سرور هیچ allowlistی نداره</td></tr>
+<tr><td class="mono" style="font-size:12px;">null_origin_trusted</td><td><code>Origin: null</code></td><td data-i="123">قابل exploit از iframe sandboxed</td></tr>
+<tr><td class="mono" style="font-size:12px;">prefix_match_bypass</td><td data-i="124"><code>https://{هدف}.{ساختگی}</code></td><td data-i="125">باگ کلاسیک: چک "شروع می‌شه با" نه "برابره با"</td></tr>
+</tbody>
+</table></div>
+<p data-i="126" style="color:var(--muted); font-size:13.5px;">severity: اگه <code>Access-Control-Allow-Credentials: true</code> باشه → <span class="badge sev-critical">critical</span>، وگرنه <span class="badge sev-medium">medium</span>.</p>
+<h4 data-i="127" style="font-size:14.5px; margin:20px 0 10px;">تست Open Redirect</h4>
+<p data-i="128" style="color:var(--ink); font-size:14.5px;">مقدار هر پارامتر رو با یه دامنه‌ی نشانه‌دار (marker تصادفی و یکتا) عوض می‌کنه — ۳ نوع payload (URL کامل، <code>//</code> protocol-relative، بک‌اسلش) — و چک می‌کنه سرور ۳xx با <code>Location</code> اشاره‌کننده به همون marker می‌ده یا نه.</p>
+</div>
+</section>
+<!-- SSRF -->
+<section class="sub-hunter" id="h-ssrf">
+<div class="hunter-card">
+<div class="hunter-head"><span class="hunter-emoji">🎯</span><div><h3>SSRFHunter</h3><span class="hunter-idx">Server-Side Request Forgery</span></div></div>
+<h4 data-i="129" style="font-size:14.5px; margin:18px 0 10px;">روش ۱ — تشخیص غیر-blind (بدون سرویس خارجی)</h4>
+<p data-i="130" style="color:var(--ink); font-size:14.5px;">مقدار پارامتر رو با <code>http://169.254.169.254/latest/meta-data/</code> (متادیتای AWS/GCP/Azure) یا <code>http://127.0.0.1/</code> عوض می‌کنه و چک می‌کنه پاسخ امضای متادیتا داره (مثل <code>instance-id</code>, <code>ami-id</code>). اگه پیدا بشه: <span class="badge sev-critical">critical</span> + <span class="badge sev-high">confirmed</span> (قطعیه، نه حدس).</p>
+<h4 data-i="131" style="font-size:14.5px; margin:20px 0 10px;">روش ۲ — OOB Callback <span class="badge opt">اختیاری</span></h4>
+<p data-i="132" style="color:var(--ink); font-size:14.5px;">برای SSRF کور (fetch می‌شه ولی reflect نمی‌شه)، نیاز به یه سرویس Out-of-Band مثل <a href="https://github.com/projectdiscovery/interactsh" rel="noopener" target="_blank">interactsh</a>:</p>
+<ol style="color:var(--muted); font-size:13.5px; padding-inline-start:20px;">
+<li data-i="133">یه دامنه‌ی OOB بگیر</li>
+<li data-i="134">از داشبورد → «⚙️ تنظیمات» → فیلد «SSRF — دامنه‌ی OOB»</li>
+<li data-i="135">دور بعدی اسکن، یه ساب‌دامین یکتا (توکن تصادفی) تزریق می‌شه</li>
+<li data-i="136"><b style="color:var(--ink);">باید خودت دستی</b> بری داشبورد OOB رو چک کنی — ابزار نمی‌تونه callback رو خودش تأیید کنه</li>
+</ol>
+</div>
+</section>
+<!-- Nuclei -->
+<section class="sub-hunter" id="h-nuclei">
+<div class="hunter-card">
+<div class="hunter-head"><span class="hunter-emoji">📡</span><div><h3>NucleiHunter</h3><span data-i="137" style="display:contents"><span class="hunter-idx">اسکن با تمپلیت‌های عمومی community</span></span></div></div>
+<p data-i="138" style="color:var(--ink); font-size:14.5px; margin-bottom:0;">روی هر هاست زنده، <code>nuclei</code> رو با تمپلیت‌های عمومی community اجرا می‌کنه — CVEهای شناخته‌شده و misconfigurationهای رایج. برخلاف Template Forge (بعدی)، تمپلیت‌ها از پیش نوشته شدن، نه مخصوص این هدف خاص.</p>
+</div>
+</section>
+<!-- Template Forge -->
+<section class="sub-hunter" id="h-forge">
+<div class="hunter-card">
+<div class="hunter-head"><span class="hunter-emoji">🔨</span><div><h3>TemplateForgeHunter</h3><span data-i="139" style="display:contents"><span class="hunter-idx">تولید تمپلیت Nuclei سفارشی با AI</span></span></div></div>
+<p data-i="140" style="color:var(--ink); font-size:14.5px;">از روی سیگنال‌های واقعی همین هدف خاص (هدر Server، محتوای صفحه)، با کمک Gemini یه تمپلیت YAML <b>مخصوص همین اپ</b> می‌سازه — چیزی که هیچ تمپلیت عمومی‌ای پوشش نمی‌ده.</p>
+<div class="callout danger">
+<div class="t" data-i="141">تنها هانتری که HTTP probe رو خود AI می‌سازه — لایه‌ی validation اجباری</div><span data-i="142" style="display:contents">
+        هر تمپلیت قبل از هر استفاده‌ای باید: YAML معتبر با ساختار nuclei کامل باشه، از متد <code>DELETE</code>/<code>PUT</code>/<code>PATCH</code> استفاده نکنه، شامل کلیدواژه‌ی خطرناک (<code>DROP TABLE</code>, <code>rm -rf</code>) نباشه، و فیلد <code>id</code> فقط حروف/عدد/-/_ باشه (این آخری بعد از یه ممیزی امنیتی اضافه شد). اگه رد نشه: <b>نه ذخیره می‌شه نه گزارش می‌شه.</b>
+</span></div>
+<p data-i="143" style="color:var(--ink); font-size:14.5px;">پیش‌فرض <code>template_forge_auto_execute: false</code> — تمپلیت فقط validate و روی دیسک (<code>generated_templates/</code>) ذخیره می‌شه، <b>اجرا نمی‌شه</b>. باید دستی از داشبورد فعالش کنی تا با nuclei روی هدف اجرا بشه.</p>
+</div>
+</section>
+<!-- Param Miner -->
+<section class="sub-hunter" id="h-paramminer">
+<div class="hunter-card">
+<div class="hunter-head"><span class="hunter-emoji">🔍</span><div><h3>ParamMinerHunter</h3><span data-i="144" style="display:contents"><span class="hunter-idx">کشف پارامتر مخفی (سبک arjun)</span></span></div></div>
+<p data-i="145" style="color:var(--ink); font-size:14.5px;">هانترهای پارامتر-محور فقط پارامترهایی رو می‌بینن که katana توی کراول پیدا کرده. خیلی از اپ‌ها پارامتر <b>مخفی</b> دارن (<code>debug=true</code>, <code>admin=1</code>) که هیچ‌جا لینک نشدن. این هانتر یه لیست منتخب ۶۱ اسم رو تک‌تک تست می‌کنه.</p>
+<div class="grid3" style="margin:16px 0;">
+<div class="card" style="margin:0; padding:14px 16px;"><span data-i="146" style="display:contents"><b style="font-size:20px; color:var(--accent);">۶</b></span><div data-i="147" style="font-size:12.5px; color:var(--muted);">baseline متفاوت برای تخمین نویز صفحه</div></div>
+<div class="card" style="margin:0; padding:14px 16px;"><span data-i="148" style="display:contents"><b style="font-size:20px; color:var(--accent);">۶۱</b></span><div data-i="149" style="font-size:12.5px; color:var(--muted);">اسم پارامتر پرکاربرد تست می‌شه</div></div>
+<div class="card" style="margin:0; padding:14px 16px;"><span data-i="150" style="display:contents"><b style="font-size:20px; color:var(--go);">۲۵/۲۵</b></span><div data-i="151" style="font-size:12.5px; color:var(--muted);">کشف موفق در calibration، &lt;۰.۲٪ false positive</div></div>
+</div>
+<div class="callout go">
+<div class="t" data-i="152">⚡️ ارزش واقعی: زنجیره‌ی خودکار</div><span data-i="153" style="display:contents">
+        وقتی یه پارامتر مخفی پیدا بشه، خودش یه finding اطلاعاتی (<code>severity: info</code>) ثبت می‌شه، ولی مهم‌تر: <b>همون لحظه URL جدید برای IDOR، XSS، CORS/Redirect، و SSRF هم صف می‌شه.</b> سطح حمله‌ای که سایر هانترها می‌بینن، بزرگ‌تر از چیزیه که فقط از کراول معمولی به دست میومد.
+      </span></div>
+</div>
+</section>
+<!-- Takeover -->
+<section class="sub-hunter" id="h-takeover">
+<div class="hunter-card">
+<div class="hunter-head"><span class="hunter-emoji">👻</span><div><h3>TakeoverHunter</h3><span class="hunter-idx">Subdomain Takeover</span></div></div>
+<p data-i="154" style="color:var(--ink); font-size:14.5px;">برای هر ساب‌دامین، CNAME رو resolve می‌کنه. اگه به یه سرویس شناخته‌شده اشاره کنه (GitHub Pages، Heroku، S3، Shopify، Netlify و ۱۰ سرویس دیگه — <code>config/takeover_fingerprints.json</code>)، یه HTTP request می‌فرسته و بدنه رو با امضای "claim نشده" مقایسه می‌کنه.</p>
+<p data-i="155" style="color:var(--muted); font-size:13.5px;">severity بالاست (high/critical) چون یعنی هر کسی می‌تونه اون سرویس رو با اسم خودش ثبت کنه و کنترل کامل ساب‌دامین معتبر رو بگیره (فیشینگ، دزدی کوکی، XSS).</p>
+<div class="callout warn">
+<div class="t" data-i="156">قبل از گزارش، حتماً این کار رو بکن</div><span data-i="157" style="display:contents">
+        تنها راه تأیید ۱۰۰٪ اینه که واقعاً همون سرویس رو با اکانت خودت ثبت کنی و ببینی ساب‌دامین هدف به محتوای توئه اشاره می‌کنه یا نه — بهترین Proof of Concept برای گزارشه. <b>با احتیاط و طبق قوانین برنامه انجامش بده.</b>
+</span></div>
+<p data-i="158" style="color:var(--muted); font-size:13px; margin-bottom:0;">fingerprintها گاهی قدیمی می‌شن — هر چند وقت با <a href="https://github.com/EdOverflow/can-i-take-over-xyz" rel="noopener" target="_blank">can-i-take-over-xyz</a> سینک کن.</p>
+</div>
+</section>
+<!-- Secrets -->
+<section class="sub-hunter" id="h-secrets">
+<div class="hunter-card">
+<div class="hunter-head"><span class="hunter-emoji">🔑</span><div><h3>SecretsHunter</h3><span data-i="159" style="display:contents"><span class="hunter-idx">افشای کلید API / توکن</span></span></div></div>
+<p data-i="160" style="color:var(--ink); font-size:14.5px;">روی همه‌ی URLهای کراول‌شده (خصوصاً <code>.js</code>, <code>.json</code>, <code>.map</code>, <code>.env</code>) با ۱۴ الگوی regex دنبال کلید می‌گرده: AWS، Google، Stripe، GitHub، Slack، Twilio، SendGrid، Firebase، JWT، و یه الگوی عمومی با فیلتر entropy. همچنین چک می‌کنه فایل‌های <code>.js</code> به source map اشاره می‌کنن یا نه.</p>
+<div class="callout danger">
+<div class="t" data-i="161">این ابزار عمداً هیچ کلید پیداشده‌ای رو تست نمی‌کنه</div><span data-i="162" style="display:contents">
+        فقط پیدا می‌کنه و با masking (<code>AKIA****...MPLE</code>) ذخیره می‌کنه. چون تست فعال یه کلید روی سرویس شخص ثالث می‌تونه از scope خارج بشه یا قوانین اون سرویس رو بشکنه. توی گزارش صادقانه بنویس «پیدا کردم، تست نکردم».
+      </span></div>
+</div>
+</section>
+<!-- DiffScan -->
+<section class="sub-hunter" id="h-diffscan">
+<div class="hunter-card">
+<div class="hunter-head"><span class="hunter-emoji">📊</span><div><h3>DiffScan</h3><span data-i="163" style="display:contents"><span class="hunter-idx">اسکن افتراقی / Incremental — یه seeding mechanism، نه یه vuln hunter</span></span></div></div>
+<p data-i="164" style="color:var(--ink); font-size:14.5px;">قبل از اینکه هر asset به idor/xss/secrets/nuclei/takeover فرستاده بشه، از <code>core/diff_store.py</code> رد می‌شه: «این asset رو قبلاً برای همین برنامه دیده بودیم؟» — فقط چیزهای واقعاً جدید صف می‌شن.</p>
+<p data-i="165" style="color:var(--muted); font-size:13.5px;">توی bug bounty معمولاً نفر اول که گزارش می‌ده پول می‌گیره. DiffScan باعث می‌شه هر اسکن مستقیم بره سراغ چیزهایی که همین امروز تازه ظاهر شدن.</p>
+<div class="callout warn" style="margin-bottom:0;">
+<div class="t" data-i="166">محدودیت مهم</div><span data-i="167" style="display:contents">
+        فقط "URL/دامنه‌ی جدید" رو تشخیص می‌ده، نه "محتوای تغییرکرده". اگه یه فایل JS قبلاً چک شده ولی محتواش عوض شده، دوباره چک نمی‌شه. برای این مورد، هر چند وقت (مثلاً هفتگی) از داشبورد بخش هانترها، «بازنشانی تاریخچه» رو بزن.
+      </span></div>
+</div>
+</section>
+<!-- Knowledge Base -->
+<section class="sub-hunter" id="h-knowledge">
+<div class="hunter-card">
+<div class="hunter-head"><span class="hunter-emoji">📚</span><div><h3 data-i="168">آموزش هانترها (Knowledge Base)</h3><span data-i="169" style="display:contents"><span class="hunter-idx">یه فیچر داشبورد، نه یکی از ۱۱ هانتر</span></span></div></div>
+<p data-i="170" style="color:var(--ink); font-size:14.5px;">می‌تونی رایتاپ‌های منتشرشده، تکنیک‌های تازه، یا یادداشت خودت رو تگ‌شده به یه هانتر خاص (یا «عمومی») ذخیره کنی.</p>
+<div class="callout warn">
+<div class="t" data-i="171">صادقانه بگم چیکار می‌کنه و چیکار نمی‌کنه</div><span data-i="172" style="display:contents">
+        این پایگاه‌دانش <b>منطق قطعی/regex-based هانترها رو خودکار تغییر نمی‌ده</b>. SecretsHunter همیشه همون ۱۴ الگو رو چک می‌کنه. چیزی که واقعاً استفاده می‌کنه، بخش <b>planning Overseer</b> هست: وقتی از Gemini می‌پرسه «قدم بعدی چیه؟»، یادداشت‌های تو هم به‌عنوان context اضافه می‌شن.
+      </span></div>
+<p data-i="173" style="color:var(--ink); font-size:14.5px; margin-bottom:6px;"><b>۲ راه استفاده:</b></p>
+<ul style="color:var(--muted); font-size:13.5px; padding-inline-start:20px;">
+<li data-i="174"><b style="color:var(--ink);">خودکار:</b> فقط با اضافه‌کردن یادداشت، خودش توی planning استفاده می‌شه</li>
+<li data-i="175"><b style="color:var(--ink);">دستی («🔍 پیشنهاد الگو»):</b> از Gemini می‌خواد از متن یادداشت الگوی قابل‌اتوماسیون استخراج کنه — نتیجه فقط پیشنهاده، هیچ فایل کدی خودکار تغییر نمی‌کنه</li>
+</ul>
+<p data-i="176" style="color:var(--muted); font-size:13px; margin-bottom:0;">حتی اگه یه یادداشت باعث بشه Overseer یه هدف عجیب پیشنهاد بده، همون ScopeGuard دوباره چکش می‌کنه قبل از صف‌شدن.</p>
+</div>
+</section>
+<!-- ============ DASHBOARD ============ -->
+<section id="s-dashboard">
+<div class="stage-head"><span data-i="177" style="display:contents"><span class="stage-num">۰۸</span></span><h2 data-i="178">داشبورد وب — مرکز فرماندهی</h2></div>
+<p class="lead" data-i="179">دیگه فقط read-only نیست — از اینجا می‌تونی <b>کل سیستم رو مدیریت کنی</b>، بدون دستکاری دستی فایل‌های JSON.</p>
+<div class="term">
+<div class="term-bar"><span></span><span></span><span></span><span class="term-title">terminal</span></div>
+<pre>cd dashboard
+python app.py</pre>
+</div>
+<p data-i="180" style="color:var(--muted); font-size:14.5px;">مرورگر رو باز کن: <code>http://127.0.0.1:5000</code></p>
+<div class="callout danger">
+<div class="t" data-i="181">⚠ هشدار امنیتی مهم</div><span data-i="182" style="display:contents">
+      این داشبورد الان write-access کامل به سیستم داره (می‌تونه اسکن اجرا کنه، scope رو عوض کنه، API keyهاتو ببینه/عوض کنه). <b>همیشه فقط روی <code>127.0.0.1</code> نگهش دار.</b> هیچ‌وقت:
+      </span><ul>
+<li data-i="183"><code>host="0.0.0.0"</code> نکن</li>
+<li data-i="184">پورت ۵۰۰۰ رو forward نکن</li>
+<li data-i="185">از ngrok / cloudflare tunnel برای expose کردنش استفاده نکن</li>
+</ul><span data-i="186" style="display:contents">
+      هر کسی که به این پورت دسترسی پیدا کنه، عملاً کنترل کامل ابزار امنیتی‌ت و کلیدهات رو به دست میاره.
+    </span></div>
+<div class="callout info">
+<div class="t" data-i="187">محافظت CSRF (از این نسخه)</div><span data-i="188" style="display:contents">
+      این داشبورد login/session نداره (عمداً — ابزار لوکال تک‌کاربره‌ست)، برای همین هر بار <code>app.py</code> اجرا می‌شه یه توکن تصادفی تازه ساخته می‌شه. یعنی اگه چند تا تب داشبورد از <b>قبل از یه ری‌استارت</b> باز مونده، بعد از ری‌استارت باید همه‌شونو رفرش کنی — وگرنه با خطای «CSRF token نامعتبر» (۴۰۳) مواجه می‌شن. نیازی به کار دستی دیگه‌ای نیست.
+    </span></div>
+<h3 data-i="189" style="font-size:17px; margin:36px 0 16px;">نوار کناری — ۸ بخش</h3>
+<div class="idx-card"><span class="e">▶️</span><div data-i="190"><b>شروع اسکن</b><span>وضعیت زنده (idle/running/completed/error)، دکمه‌ی شروع/توقف (توی thread جدا، داشبورد قفل نمی‌شه)، لاگ زنده (هر ۴ ثانیه)، خلاصه‌ی Kanban</span></div></div>
+<div class="idx-card"><span class="e">🧭</span><div data-i="191"><b>دامنه‌های مجاز (Domains)</b><span>افزودن/حذف دامنه از in_scope/out_of_scope با کلیک؛ چند-برنامه‌ای — چند تا scope رو با اسم جدا ذخیره و جابه‌جا کن</span></div></div>
+<div class="idx-card"><span class="e">🤖</span><div data-i="192"><b>هانترها</b><span>هر ۱۱ هانتر با توضیح و آمار مخصوص خودش؛ سوییچ روشن/خاموش تکی؛ کنار DiffScan دکمه‌ی «بازنشانی تاریخچه»</span></div></div>
+<div class="idx-card"><span class="e">🐞</span><div data-i="193"><b>یافته‌ها و گزارش‌ها</b><span>جدول کامل با شدت/نوع/هدف/اطمینان؛ دکمه‌ی «رایتاپ» برای دیدن گزارش draft؛ ردیاب درآمد (وضعیت ارسال + مبلغ پاداش)</span></div></div>
+<div class="idx-card"><span class="e">🔑</span><div data-i="194"><b>API Keys</b><span>کلید Gemini و Session A/B — همیشه masked نمایش داده می‌شن؛ مقدار کامل هیچ‌وقت به مرورگر برنمی‌گرده</span></div></div>
+<div class="idx-card"><span class="e">📚</span><div data-i="195"><b>آموزش هانترها</b><span>افزودن یادداشت تگ‌شده به یه هانتر؛ دکمه‌ی «🔍 پیشنهاد الگو» — جزئیات بخش قبل</span></div></div>
+<div class="idx-card"><span class="e">📜</span><div data-i="196"><b>تاریخچه</b><span>لیست همه‌ی اجراهای قبلی: اسم برنامه، وضعیت، تعداد یافته، زمان شروع/پایان</span></div></div>
+<div class="idx-card"><span class="e">⚙️</span><div data-i="197"><b>تنظیمات</b><span>نرخ درخواست، دامنه‌ی OOB برای SSRF، سوییچ اجرای خودکار Template Forge</span></div></div>
+</section>
+<!-- ============ REPORTING ============ -->
+<section id="s-report">
+<div class="stage-head"><span data-i="198" style="display:contents"><span class="stage-num">۰۹</span></span><h2 data-i="199">بررسی و ارسال گزارش‌ها</h2></div>
+<p class="lead" data-i="200">فایل‌های <code>reports/*.md</code> شامل Summary، Steps to Reproduce (خودت پرش کن)، Evidence خام، Impact، Suggested Fix، و یه چک‌لیست بالای فایل.</p>
+<div class="card">
+<h3 data-i="201" style="margin-top:0; font-size:16px;">قبل از ارسال هر گزارش</h3>
+<ol style="color:var(--ink); font-size:14.5px; padding-inline-start:22px; margin-bottom:0;">
+<li data-i="202">خودت دستی، با مرورگر یا Burp/curl، آسیب‌پذیری رو reproduce کن</li>
+<li data-i="203">مطمئن شو داده‌ی واقعی کاربر دیگه‌ای رو بیش از حد لازم نخوندی</li>
+<li data-i="204">Evidence خام رو پاک‌سازی کن — اگه چیزی حساسه، حذفش کن</li>
+<li data-i="205">با فرمت گزارش‌دهی خاص همون برنامه (اگه داره) تطبیقش بده</li>
+<li data-i="206">فقط بعد از این مراحل ارسال کن</li>
+</ol>
+</div>
+<div class="callout warn">
+<div class="t" data-i="207">یادت باشه</div><span data-i="208" style="display:contents">
+      همه‌ی findingها پیش‌فرض <code>candidate</code> هستن — یعنی اسکنر حدس زده، نه قطعی ثابت کرده. استثنا: XSSHunter با Playwright، CorsRedirectHunter، و SSRFHunter در حالت metadata-reflected — این‌ها <code>confirmed</code> می‌زنن. حتی اون‌هام بهتره دستی چک کنی. یافته‌ی OOB-candidate توی SSRF همیشه candidate می‌مونه چون بدون چک دستی داشبورد OOB قابل تأیید نیست.
+    </span></div>
+</section>
+<!-- ============ TROUBLESHOOTING ============ -->
+<section id="s-trouble">
+<div class="stage-head"><span data-i="209" style="display:contents"><span class="stage-num">۱۰</span></span><h2 data-i="210">جدول عیب‌یابی</h2></div>
+<div class="tbl-wrap"><div class="card">
+<div class="tbl-scroll"><table>
+<thead><tr><th data-i="211" style="width:38%">مشکل</th><th data-i="212">راه‌حل</th></tr></thead>
+<tbody id="trouble-tbody"></tbody>
+</table></div>
+</div></div>
+</section>
+
+<footer data-i="286">bugbounty_agent — راهنمای کامل پروژه · بر اساس راهنمای_کامل_پروژه-10.md</footer>
+</div>
+</main>
+</div>
+<script>
+
+
+const toggle = document.getElementById('menu-toggle');
+const sidenav = document.getElementById('sidenav');
+const links = Array.from(sidenav.querySelectorAll('a[href^="#"]'));
+const pairs = links.map(a => [a, document.getElementById(a.getAttribute('href').slice(1))]).filter(p => p[1]);
+let ticking = false, activeLink = null;
+function update(){
+  ticking = false;
+  let cur = pairs[0];
+  for (const p of pairs){ if (p[1].getBoundingClientRect().top - 90 <= 0) cur = p; }
+  if (innerHeight + scrollY >= document.documentElement.scrollHeight - 2) cur = pairs[pairs.length - 1];
+  if (cur[0] === activeLink) return;
+  activeLink = cur[0];
+  links.forEach(a => a.classList.toggle('active', a === activeLink));
+  const r = activeLink.getBoundingClientRect(), nr = sidenav.getBoundingClientRect();
+  if (r.top < nr.top + 40 || r.bottom > nr.bottom - 40) sidenav.scrollTop += r.top - nr.top - nr.height / 2;
+}
+function onScroll(){ if (!ticking){ ticking = true; requestAnimationFrame(update); } }
+addEventListener('scroll', onScroll, {passive:true});
+addEventListener('resize', onScroll, {passive:true});
+update();
+links.forEach(a => a.addEventListener('click', () => { toggle.checked = false; }));
+document.querySelector('.mobile-bar label').addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggle.checked = !toggle.checked; }
+});
+addEventListener('keydown', e => { if (e.key === 'Escape') toggle.checked = false; });
+</script>
+
+<script>
+(function(){
+const EN={"1": "☰ Menu", "2": "<b style='font-size:13px;'>Project guide</b>", "3": "<b>bugbounty_agent</b><span>Complete guide</span>", "4": "Start", "5": "Setup", "6": "System architecture", "7": "Prerequisites", "8": "Step-by-step install", "9": "Config files", "10": "Pre-run test", "11": "Real run", "12": "11 Hunters", "13": "Overview", "14": "Usage", "15": "Web dashboard", "16": "Review &amp; submit reports", "17": "Troubleshooting", "21": "<span class='dot'></span> Complete project guide", "22": "From <span>zero</span> to <span>hero</span><br>Bug Bounty Multi-Agent System", "23": "Architecture, installation, configuration, all 11 hunters, the dashboard, and a complete usage guide — everything in the project guide, in one place.", "24": "<span class='badge'>11 hunters</span> <span class='badge'>Web dashboard</span> <span class='badge go' style='color:var(--go); border-color:rgba(94,230,168,.35); background:rgba(94,230,168,.08);'>Security-audited</span>", "26": "Complete system architecture", "27": "Everything starts from a single entry point (<code>main.py</code>) and passes through fixed layers — before any hunter runs.", "28": "supplementary", "29": "tasks are stored in", "30": "before being queued, they also pass through:", "31": "queues only new assets", "32": "everything passes through this", "33": "Full flow of a run", "34": "<code>Overseer.seed_recon()</code> creates a recon task for every in-scope domain", "35": "<b>ReconHunter</b> runs: subfinder → scope filter → httpx → scope filter → katana → scope filter", "36": "From the result, <code>seed_vuln_hunters_from_recon()</code> seeds all the other hunters <b>deterministically</b> (not by LLM guesswork), after the DiffScan filter", "37": "A supplementary round: <code>plan_next_steps()</code> asks Gemini whether anything else is needed — filtered again by the same ScopeGuard", "38": "Each hunter runs on its own queue; every finding is recorded with <code>report_finding()</code>", "39": "A Markdown draft report is generated in <code>reports/</code> for each finding", "40": "<code>core/scan_runner.py</code> wraps this whole flow in a single function — both the CLI and the dashboard call it", "42": "Prerequisites", "43": "Tool", "44": "What it's for", "45": "Running the code itself", "46": "Installing subfinder/httpx/katana/nuclei", "47": "<b>Gemini API key (free from Google AI Studio)</b>", "48": "Overseer's supplementary decision-making", "49": "Playwright + Chromium <span class='badge opt'>optional</span>", "50": "Real confirmation of XSS execution with a headless browser", "51": "Resolving CNAMEs for TakeoverHunter (included in requirements.txt)", "52": "A test account on the target application", "53": "For IDORHunter (you must provide your own session)", "54": "A verified account on a Bug Bounty program", "55": "So you have a real, authorized scope", "57": "Step-by-step installation", "58": "Want to go straight to the dashboard?", "59": "From this version on, you can set up scope/API key/sessions either manually (this section) or from the <b>web dashboard</b> (section 08). If you prefer the dashboard, do only steps 1 to 3 of this section (installation) and jump straight to section 08.", "60": "Step 1 — Extract and venv", "61": "Step 2 — Playwright <span class='badge opt'>optional but recommended</span>", "62": "So XSSHunter can truly confirm that the code executed, rather than just guessing heuristically:", "63": "If you skip this step, XSSHunter still works, but its findings always stay <code>confidence: candidate</code>.", "64": "Step 3 — Recon tools and nuclei", "65": "Make sure <code>$HOME/go/bin</code> is in your PATH:", "66": "The first nuclei run downloads the public templates (takes a few minutes):", "67": "Step 4 — API Key", "68": "Get a free key from <a href='https://aistudio.google.com/apikey' rel='noopener' target='_blank'>Google AI Studio</a> (no credit card needed):", "69": "The default model is <code>gemini-3.7-flash</code> — a specific, pinned model ID (not the “-latest” alias, which per Google's own docs can change silently and return 404). If you want to change the model later, just set <code>GEMINI_MODEL</code> — no need to touch the code:", "70": "# optional — this is the default", "72": "Configuring the Config files", "73": "Do this section carefully — these are the system's real protection layer.", "74": "<span class='badge req'>Required</span>", "76": "Fill it in with the program's official scope:", "77": "Important note about out_of_scope", "78": "Unlike <code>in_scope</code> (where you must explicitly use <code>*.</code> to include subdomains), every item in <code>out_of_scope</code> <b>excludes all of its subdomains by default</b>, even without <code>*.</code>. So <code>&quot;internal.target.com&quot;</code> excludes both itself and <code>api.internal.target.com</code>. This is intentional: for a security tool, over-excluding is harmless, but missing something that should be excluded could mean scanning something you weren't authorized to.", "79": "<span class='badge opt'>Optional</span>", "83": "<span class='badge opt'>Optional</span>", "81": "The defaults are reasonable. If the program's policy states a request-rate cap, set it here.", "82": "Not respecting this limit can get your account banned.", "85": "For IDORHunter only — <b style='color:var(--ink);'>it must be the session of your own test account</b>, not someone else's.", "86": "Only <code>session_a</code> filled: checks whether login-protected data is also reachable without auth (broken access control)", "87": "Both filled: a more precise IDOR test (can account B access account A's resource?)", "88": "Without this file: increment/decrement testing without a session isn't performed, and IDORHunter is effectively skipped", "90": "Test before the real run", "91": "You should see ✅ everywhere. This guarantees the scope security layer works correctly — before you touch a real target.", "93": "The real run", "94": "Sample output:", "96": "All 11 hunters", "97": "Each hunter is a separate file in <code>hunters/</code>. Most of them run on the same list of crawled URLs — with no separate seeding.", "98": "Shared infrastructure", "99": "IDOR, XSS, CORS/Redirect, and SSRF share exactly the same <code>param_urls</code> list (every URL with a query parameter). So if one tests a URL, the others run there too, with the same diff-filtering.", "100": "<span class='hunter-idx'>Base hunter — starting point of every scan</span>", "101": "Chains three tools: <b>subfinder</b> (subdomain discovery) → ScopeGuard filter → <b>httpx</b> (liveness check) → filter again → <b>katana</b> (URL crawl) → filter again. The final output (subdomains, live hosts, URLs) is the seed for every other hunter.", "102": "Why filter three times?", "103": "Each stage passes through ScopeGuard separately — not just the final output. So even if subfinder returns an out-of-scope subdomain, it's dropped right there and never reaches httpx/katana.", "104": "3 kinds of tests, depending on how much of <code>auth.json</code> you've filled in:", "105": "Test", "106": "Config needed", "107": "Broken Access Control (is data reachable without auth?)", "108": "Cross-Account IDOR (can account B access account A's resource?)", "109": "Sequential ID Access (needs manual review)", "110": "Runs even without a session", "111": "Without <code>auth.json</code> filled in, only the third test runs — for real IDOR testing, be sure to fill in section 4.3.", "112": "<span class='hunter-idx'>Reflected XSS + real browser confirmation</span>", "113": "Injects a payload into every parameter, then — if Playwright is installed — actually opens the page in headless Chromium and checks whether <code>alert()</code> truly fired.", "114": "Case", "115": "Playwright installed and alert() actually fired", "116": "Playwright not installed, only reflection observed", "117": "CORS testing — three kinds of spoofed Origin", "118": "Test type", "119": "What it sends", "120": "What it means if reflected", "121": "A completely unrelated domain", "122": "Server has no allowlist at all", "123": "Exploitable from a sandboxed iframe", "124": "<code>https://{target}.{spoofed}</code>", "125": "Classic bug: checks “starts with” instead of “equals”", "126": "severity: <span class='badge sev-critical'>critical</span> if <code>Access-Control-Allow-Credentials: true</code>, otherwise <span class='badge sev-medium'>medium</span>.", "127": "Open Redirect testing", "128": "Replaces every parameter value with a marked domain (a random, unique marker) — 3 payload types (full URL, <code>//</code> protocol-relative, backslash) — and checks whether the server returns a 3xx with a <code>Location</code> pointing to that same marker.", "129": "Method 1 — non-blind detection (no external service)", "130": "Replaces the parameter value with <code>http://169.254.169.254/latest/meta-data/</code> (AWS/GCP/Azure metadata) or <code>http://127.0.0.1/</code> and checks whether the response has a metadata signature (like <code>instance-id</code>, <code>ami-id</code>). If found: <span class='badge sev-critical'>critical</span> + <span class='badge sev-high'>confirmed</span> (certain, not a guess).", "131": "Method 2 — OOB Callback <span class='badge opt'>optional</span>", "132": "For blind SSRF (fetched but not reflected), you need an Out-of-Band service like <a href='https://github.com/projectdiscovery/interactsh' rel='noopener' target='_blank'>interactsh</a>:", "133": "Get an OOB domain", "134": "From the dashboard → «⚙️ Settings» → the «SSRF — OOB domain» field", "135": "On the next scan round, a unique subdomain (random token) is injected", "136": "<b style='color:var(--ink);'>You must manually</b> go check the OOB dashboard — the tool can't confirm the callback itself", "137": "<span class='hunter-idx'>Scan with public community templates</span>", "138": "Runs <code>nuclei</code> against every live host with public community templates — known CVEs and common misconfigurations. Unlike Template Forge (next), these templates are pre-written, not specific to this particular target.", "139": "<span class='hunter-idx'>AI-generated custom Nuclei templates</span>", "140": "From this specific target's real signals (Server header, page content), with Gemini's help, it builds a YAML template <b>specific to this app</b> — something no generic template covers.", "141": "The only hunter where the AI itself builds the HTTP probe — a mandatory validation layer", "142": "Every template must, before any use: be valid YAML with the full nuclei structure, not use the <code>DELETE</code>/<code>PUT</code>/<code>PATCH</code> method, contain no dangerous keyword (<code>DROP TABLE</code>, <code>rm -rf</code>), and have an <code>id</code> field with only letters/digits/-/_ (this last rule was added after a security audit). If it fails: <b>it's neither saved nor reported.</b>", "143": "Default <code>template_forge_auto_execute: false</code> — the template is only validated and saved to disk (<code>generated_templates/</code>), <b>not executed</b>. You must manually enable it from the dashboard for it to run against the target with nuclei.", "144": "<span class='hunter-idx'>Hidden parameter discovery (arjun-style)</span>", "145": "Parameter-driven hunters only see parameters that katana found while crawling. Many apps have <b>hidden</b> parameters (<code>debug=true</code>, <code>admin=1</code>) that are never linked anywhere. This hunter tests a curated list of 61 names one by one.", "147": "different baseline for estimating page noise", "149": "common parameter names tested", "151": "successful discoveries in calibration, &lt;0.2% false positives", "152": "⚡️ Real value: the automatic chain", "153": "When a hidden parameter is found, it logs an informational finding (<code>severity: info</code>) itself, but more importantly: <b>that same URL is immediately queued for IDOR, XSS, CORS/Redirect, and SSRF too.</b> The attack surface the other hunters see is larger than what a plain crawl alone would turn up.", "154": "Resolves the CNAME for every subdomain. If it points to a known service (GitHub Pages, Heroku, S3, Shopify, Netlify, and 10 others — <code>config/takeover_fingerprints.json</code>), it sends an HTTP request and compares the body against an “unclaimed” signature.", "155": "Severity is high (high/critical) because it means anyone can register that service under their own name and take full control of a valid subdomain (phishing, cookie theft, XSS).", "156": "Always do this before reporting", "157": "The only way to confirm it 100% is to actually register that same service yourself and check whether the target subdomain points to your content — the best Proof of Concept for a report. <b>Do this carefully and within the program's rules.</b>", "158": "Fingerprints can go stale — sync periodically with <a href='https://github.com/EdOverflow/can-i-take-over-xyz' rel='noopener' target='_blank'>can-i-take-over-xyz</a>.", "159": "<span class='hunter-idx'>API key / token exposure</span>", "160": "Scans all crawled URLs (especially <code>.js</code>, <code>.json</code>, <code>.map</code>, <code>.env</code>) for keys using 14 regex patterns: AWS, Google, Stripe, GitHub, Slack, Twilio, SendGrid, Firebase, JWT, and a generic pattern with an entropy filter. Also checks whether <code>.js</code> files reference a source map.", "161": "This tool deliberately never tests any key it finds", "162": "It only finds and stores keys with masking (<code>AKIA****...MPLE</code>). Because actively testing a key against a third-party service could fall outside scope or break that service's rules. In your report, say honestly “found it, didn't test it.”", "163": "<span class='hunter-idx'>Differential / Incremental scan — a seeding mechanism, not a vuln hunter</span>", "164": "Before any asset is sent to idor/xss/secrets/nuclei/takeover, it passes through <code>core/diff_store.py</code>: “have we seen this asset for this program before?” — only genuinely new things get queued.", "165": "In bug bounty, usually the first person to report gets paid. DiffScan makes every scan go straight for things that just appeared today.", "166": "Important limitation", "167": "It only detects “new URL/domain”, not “changed content”. If a JS file was already checked but its content changed, it won't be checked again. For that case, periodically (e.g. weekly) hit «Reset history» in the dashboard's Hunters section.", "168": "Hunter Knowledge Base", "169": "<span class='hunter-idx'>A dashboard feature, not one of the 11 hunters</span>", "170": "You can save published writeups, new techniques, or your own notes, tagged to a specific hunter (or “general”).", "171": "Honestly, what it does and doesn't do", "172": "This knowledge base <b>doesn't automatically change the hunters' deterministic/regex-based logic</b>. SecretsHunter always checks the same 14 patterns. What actually uses it is the <b>Overseer's planning</b> step: when it asks Gemini “what's the next step?”, your notes get added as context too.", "173": "<b>2 ways to use it:</b>", "174": "<b style='color:var(--ink);'>Automatic:</b> just by adding a note, it's used in planning on its own", "175": "<b style='color:var(--ink);'>Manual (“🔍 Suggest pattern”):</b> asks Gemini to extract an automatable pattern from the note's text — the result is only a suggestion, no code file is changed automatically", "176": "Even if a note makes the Overseer suggest an odd target, the same ScopeGuard checks it again before it's queued.", "178": "Web dashboard — command center", "179": "No longer just read-only — from here you can <b>manage the whole system</b>, without manually editing JSON files.", "180": "Open your browser: <code>http://127.0.0.1:5000</code>", "181": "⚠ Important security warning", "182": "This dashboard now has full write access to the system (it can run scans, change scope, see/change your API keys). <b>Always keep it on <code>127.0.0.1</code> only.</b> Never:", "183": "<code>host=\"0.0.0.0\"</code>", "184": "forward port 5000", "185": "use ngrok / cloudflare tunnel to expose it", "186": "Anyone who gets access to this port effectively gets full control of your security tool and your keys.", "187": "CSRF protection (from this version)", "188": "This dashboard has no login/session (intentionally — it's a local, single-user tool), so every time <code>app.py</code> runs, a fresh random token is generated. That means if several dashboard tabs were left open <b>from before a restart</b>, you need to refresh all of them after a restart — otherwise they'll hit an “Invalid CSRF token” (403) error. No other manual action is needed.", "189": "Sidebar — 8 sections", "190": "<b>Start scan</b><span>Live status (idle/running/completed/error), start/stop button (runs in a separate thread, dashboard doesn't lock up), live log (every 4 seconds), Kanban summary</span>", "191": "<b>Allowed domains (Domains)</b><span>Add/remove a domain from in_scope/out_of_scope with a click; multi-program — save and switch between several named scopes</span>", "192": "<b>Hunters</b><span>All 11 hunters with their own description and stats; individual on/off switches; a «Reset history» button next to DiffScan</span>", "193": "<b>Findings &amp; reports</b><span>Full table with severity/type/target/confidence; a «Write-up» button to view the draft report; a bounty tracker (submission status + reward amount)</span>", "194": "<b>API Keys</b><span>Gemini key and Session A/B — always shown masked; the full value never goes back to the browser</span>", "195": "<b>Hunter training</b><span>Add a tagged note to a hunter; the «🔍 Suggest pattern» button — details in the previous section</span>", "196": "<b>History</b><span>List of every past run: program name, status, finding count, start/end time</span>", "197": "<b>Settings</b><span>Request rate, SSRF OOB domain, Template Forge auto-execute switch</span>", "199": "Reviewing and submitting reports", "200": "The <code>reports/*.md</code> files include a Summary, Steps to Reproduce (you fill these in), raw Evidence, Impact, Suggested Fix, and a checklist at the top of the file.", "201": "Before submitting any report", "202": "Manually reproduce the vulnerability yourself, with a browser or Burp/curl", "203": "Make sure you haven't read more of another real user's data than necessary", "204": "Clean up the raw Evidence — if anything is sensitive, remove it", "205": "Match it to that specific program's reporting format (if it has one)", "206": "Only submit after these steps", "207": "Keep in mind", "208": "All findings default to <code>candidate</code> — meaning the scanner guessed, it didn't definitively prove it. Exception: XSSHunter with Playwright, CorsRedirectHunter, and SSRFHunter in metadata-reflected mode — these mark <code>confirmed</code>. Even those are better to check manually. An OOB-candidate SSRF finding always stays a candidate, since it can't be confirmed without manually checking the OOB dashboard.", "210": "Troubleshooting table", "211": "Problem", "212": "Solution", "286": "bugbounty_agent — Complete project guide · based on راهنمای_کامل_پروژه-10.md"};
+const FA_TROUBLE=[["nuclei: command not found", "مطمئن شو $HOME/go/bin توی PATH هست"], ["IDORHunter هیچ finding‌ای نمی‌ده", "چک کن config/auth.json رو پر کردی و کوکی معتبره (session منقضی نشده)"], ["XSSHunter فقط candidate می‌ده، هیچ‌وقت confirmed", "Playwright نصب نیست: pip install playwright && playwright install chromium"], ["داشبورد صفحه‌ی خالی نشون می‌ده", "هنوز main.py رو اجرا نکردی، یعنی tasks.db/findings.db خالیه"], ["خیلی کند اجرا می‌شه", "requests_per_second رو توی settings.json بالاتر ببر (فقط اگه policy برنامه اجازه می‌ده)"], ["TakeoverHunter هیچ finding‌ای نمی‌ده", "چک کن dnspython نصبه (pip show dnspython)؛ همچنین ممکنه واقعاً هیچ dangling CNAME‌ای نباشه — طبیعیه"], ["TakeoverHunter می‌گه no_cname برای همه‌چیز", "خیلی از ساب‌دامین‌ها اصلاً CNAME ندارن (رکورد A مستقیم) — طبیعیه"], ["SecretsHunter هیچ finding‌ای نمی‌ده", "طبیعیه اگه هدف مراقب کدشه؛ چک کن URLهای JS واقعاً توی خروجی katana هستن"], ["یه هانتر بعد از چند تسک متوقف می‌شه و بقیه‌ی صف پردازش نمی‌شه", "فیکس‌شده (نسخه‌ی فعلی درسته) — قبلاً یه تسک ناموفق کل حلقه رو زودتر متوقف می‌کرد"], ["database is locked توی لاگ", "داشبورد و اسکن هم‌زمان به همون SQLite دسترسی دارن؛ نادره (timeout=10)؛ اگه زیاد دیدی، رفرش داشبورد رو کم‌تر کن"], ["داشبورد «شروع اسکن» می‌زنه ولی هیچی اتفاق نمی‌افته", "چک کن config/scope.json حداقل یه دامنه‌ی in_scope داشته باشه"], ["یه زیردامنه که فکر می‌کردی رد شده، اسکن شد", "فیکس‌شده (نسخه‌ی فعلی درسته) — قبلاً out_of_scope بدون *. فقط دامنه‌ی دقیق رو رد می‌کرد"], ["دور دوم اسکن هیچ تسکی صف نمی‌کنه، فکر می‌کنی گیر کرده", "طبیعیه اگه DiffScan فعاله و چیزی تغییر نکرده — دقیقاً همون رفتاریه که می‌خوایم. برای اسکن کامل: بخش هانترها → کنار DiffScan «بازنشانی تاریخچه»"], ["CorsRedirectHunter هیچ finding‌ای نمی‌ده", "طبیعیه اگه هدف CORS رو درست پیاده کرده (allowlist ثابت) یا اصلاً هدر CORS نده"], ["SSRFHunter هیچ finding‌ای نمی‌ده", "طبیعیه اگه هدف فیچر «fetch URL از کاربر» نداره یا IP داخلی رو block می‌کنه. برای SSRF کور، ssrf_oob_domain رو تنظیم کن"], ["TemplateForgeHunter هیچ finding‌ای نمی‌ده", "طبیعیه — یعنی Gemini ایده‌ی تست معناداری نداشته (خوبه، الکی تمپلیت نمی‌سازه)"], ["TemplateForgeHunter می‌گه «تمپلیت پیشنهادی رد شد»", "طبیعیه اگه Gemini تمپلیتی با متد خطرناک یا کلیدواژه‌ی خطرناک پیشنهاد بده — validation عمداً سخت‌گیرانه‌ست"], ["ParamMinerHunter هیچ پارامتری کشف نمی‌کنه", "طبیعیه اگه اپ هدف واقعاً پارامتر مخفی نداره یا همه از قبل توی کراول دیده شدن"], ["ParamMinerHunter خیلی کند اجرا می‌شه", "طبیعیه — روی هر URL ~۶۷ تا ۱۳۰ درخواست می‌زنه؛ اگه لازمه از داشبورد خاموشش کن"], ["externally-managed-environment (روی Kali/Debian)", "یادت رفته venv رو activate کنی"], ["بعد از باز نگه‌داشتن یه تب داشبورد، خطای ۴۰۳ CSRF", "طبیعیه اگه بین این مدت app.py رو ری‌استارت کردی — صفحه رو رفرش کن"], ["گزارش یه finding با اسم فایل عجیب/کوتاه‌شده ساخته شد", "طبیعیه و عمدیه — اسم فایل از vuln_type فقط با حروف/عدد/-/_ ساخته می‌شه؛ خود گزارش دست‌نخورده‌ست"]];
+const EN_TROUBLE=[["nuclei: command not found", "Make sure $HOME/go/bin is on your PATH"], ["IDORHunter gives no findings", "Check that config/auth.json is filled in and the cookie is valid (session hasn't expired)"], ["XSSHunter only gives candidate, never confirmed", "Playwright isn't installed: pip install playwright && playwright install chromium"], ["Dashboard shows an empty page", "You haven't run main.py yet, so tasks.db/findings.db is empty"], ["Runs very slowly", "Raise requests_per_second in settings.json (only if the program's policy allows it)"], ["TakeoverHunter gives no findings", "Check that dnspython is installed (pip show dnspython); also there may genuinely be no dangling CNAME — that's normal"], ["TakeoverHunter says no_cname for everything", "Many subdomains simply have no CNAME (direct A record) — that's normal"], ["SecretsHunter gives no findings", "Normal if the target is careful with its code; check that the JS URLs are actually in katana's output"], ["A hunter stops after a few tasks and the rest of the queue isn't processed", "Fixed (the current version is correct) — previously one failed task stopped the whole loop early"], ["“database is locked” in the log", "The dashboard and the scan access the same SQLite at the same time; it's rare (timeout=10); if you see it a lot, refresh the dashboard less often"], ["Dashboard's “Start scan” clicked but nothing happens", "Check that config/scope.json has at least one in_scope domain"], ["A subdomain you thought was excluded got scanned", "Fixed (the current version is correct) — previously out_of_scope without *. only excluded the exact domain"], ["Second scan round queues no tasks, looks stuck", "Normal if DiffScan is enabled and nothing changed — that's exactly the behavior we want. For a full scan: Hunters section → next to DiffScan, «Reset history»"], ["CorsRedirectHunter gives no findings", "Normal if the target implements CORS correctly (fixed allowlist) or sends no CORS header at all"], ["SSRFHunter gives no findings", "Normal if the target has no “fetch URL from user” feature or blocks internal IPs. For blind SSRF, set ssrf_oob_domain"], ["TemplateForgeHunter gives no findings", "Normal — means Gemini had no meaningful test idea (good, it doesn't make templates for nothing)"], ["TemplateForgeHunter says “proposed template rejected”", "Normal if Gemini proposed a template with a dangerous method or a dangerous keyword — validation is deliberately strict"], ["ParamMinerHunter discovers no parameters", "Normal if the target app genuinely has no hidden parameters, or they were all already seen in the crawl"], ["ParamMinerHunter runs very slowly", "Normal — it sends ~67 to 130 requests per URL; turn it off from the dashboard if needed"], ["externally-managed-environment (on Kali/Debian)", "You forgot to activate the venv"], ["After leaving a dashboard tab open, a 403 CSRF error", "Normal if you restarted app.py in the meantime — refresh the page"], ["A finding's report was created with an odd/truncated file name", "Normal and intentional — the file name is built from vuln_type using only letters/digits/-/_; the report itself is untouched"]];
+const LS='bb-guide-lang', FAL=/[\u0600-\u06FF]/;
+const D=s=>s.replace(/[۰-۹]/g,c=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(c));
+const T={
+  fa:{copy:'کپی',done:'کپی شد ✓',btn:'English',aria:'Switch to English',title:document.title,menu:'باز و بسته کردن فهرست',nav:'فهرست راهنما'},
+  en:{copy:'Copy',done:'Copied ✓',btn:'فارسی',aria:'تغییر زبان به فارسی',title:'Complete Project Guide — Bug Bounty Multi-Agent System',menu:'Toggle menu',nav:'Guide contents'}
+};
+const units=Array.from(document.querySelectorAll('[data-i]'));
+units.forEach(el=>{el._fa=el.innerHTML;});
+const langBtn=document.createElement('button');
+langBtn.type='button'; langBtn.className='lang-btn'; document.body.appendChild(langBtn);
+let lang='fa';
+
+function renderTrouble(l){
+  const tbody=document.getElementById('trouble-tbody');
+  if(!tbody) return;
+  tbody.innerHTML='';
+  const frag=document.createDocumentFragment();
+  (l==='en'?EN_TROUBLE:FA_TROUBLE).forEach(([p,sol])=>{
+    const tr=document.createElement('tr');
+    const a=document.createElement('td'); a.textContent=p;
+    const b=document.createElement('td'); b.textContent=sol; b.style.color='var(--muted)';
+    tr.append(a,b); frag.append(tr);
+  });
+  tbody.append(frag);
+}
+
+function apply(l){
+  lang=l;
+  const root=document.documentElement; root.lang=l; root.dir=(l==='en'?'ltr':'rtl');
+  units.forEach(el=>{
+    el.removeAttribute('dir');
+    const fa=el._fa, i=el.dataset.i;
+    if(l==='fa'){ el.innerHTML=fa; return; }
+    if(EN[i]!==undefined){
+      const f=el.firstElementChild;
+      const n=(el.tagName==='A'&&f&&f.classList.contains('n'))?D(f.outerHTML):'';
+      el.innerHTML=n+EN[i];
+    }else if(FAL.test(D(fa).replace(/<[^>]*>/g,''))){
+      el.innerHTML=fa; el.setAttribute('dir','rtl');
+    }else{ el.innerHTML=D(fa); }
+  });
+  renderTrouble(l);
+  document.title=T[l].title;
+  document.querySelector('.mobile-bar label').setAttribute('aria-label',T[l].menu);
+  document.getElementById('sidenav').setAttribute('aria-label',T[l].nav);
+  langBtn.textContent=T[l].btn; langBtn.setAttribute('aria-label',T[l].aria);
+  document.querySelectorAll('.copy-btn').forEach(b=>{b.classList.remove('done'); b.textContent=T[l].copy;});
+  try{localStorage.setItem(LS,l);}catch(e){}
+}
+langBtn.addEventListener('click',()=>apply(lang==='fa'?'en':'fa'));
+
+async function copyText(s,pre){
+  try{ await navigator.clipboard.writeText(s); return true; }catch(e){}
+  try{
+    const ta=document.createElement('textarea'); ta.value=s; ta.setAttribute('readonly','');
+    ta.style.cssText='position:fixed;top:0;left:0;opacity:0'; document.body.appendChild(ta);
+    ta.select(); const ok=document.execCommand('copy'); ta.remove(); if(ok) return true;
+  }catch(e){}
+  const r=document.createRange(); r.selectNodeContents(pre);
+  const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r); return false;
+}
+document.querySelectorAll('.term').forEach(t=>{
+  const title=t.querySelector('.term-title'), pre=t.querySelector('pre'), bar=t.querySelector('.term-bar');
+  if(!title||!pre||!bar||title.textContent.trim()!=='terminal') return;
+  const b=document.createElement('button'); b.type='button'; b.className='copy-btn'; b.textContent=T[lang].copy;
+  let timer;
+  b.addEventListener('click',async()=>{
+    const ok=await copyText(pre.textContent.replace(/\s+$/,''),pre);
+    clearTimeout(timer);
+    if(ok){ b.classList.add('done'); b.textContent=T[lang].done; }
+    timer=setTimeout(()=>{ b.classList.remove('done'); b.textContent=T[lang].copy; },1800);
+  });
+  bar.appendChild(b);
+});
+
+let saved=null; try{saved=localStorage.getItem(LS);}catch(e){}
+apply(saved==='en'?'en':'fa');
+})();
+</script>
+</body>
+</html>
